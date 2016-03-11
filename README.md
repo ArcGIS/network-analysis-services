@@ -1,5 +1,5 @@
 # network-analysis-services
-Here are the geoprocessing (GP) tools to publish directions, routing, and logistics services to an ArcGIS for Server site and configure the services with Portal for ArcGIS. 
+Here are the geoprocessing (GP) tools to publish directions, routing, and logistics services available on ArcGIS Online to your own ArcGIS for Server site and configure the services with your Portal for ArcGIS. 
 
 ## Instructions
 Follow the instructions from the [wiki](../../wiki) to publish the services. 
