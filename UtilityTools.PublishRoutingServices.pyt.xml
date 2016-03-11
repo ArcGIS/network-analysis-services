@@ -1,0 +1,73 @@
+<metadata xml:lang="en">
+	<!--
+ /*
+ * Copyright 2016 Esri
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+       http://www.apache.org/licenses/LICENSE-2.0
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and limitations under the License.​
+ */
+ -->
+	<Esri>
+		<CreaDate>20151110</CreaDate>
+		<CreaTime>14520600</CreaTime>
+		<ArcGISFormat>1.0</ArcGISFormat>
+		<SyncOnce>TRUE</SyncOnce>
+		<ModDate>20160207</ModDate>
+		<ModTime>12160500</ModTime>
+		<scaleRange>
+			<minScale>150000000</minScale>
+			<maxScale>5000</maxScale>
+		</scaleRange>
+		<ArcGISProfile>ItemDescription</ArcGISProfile>
+	</Esri>
+	<tool name="PublishRoutingServices" displayname="Publish Routing Services" toolboxalias="naut" xmlns="">
+		<arcToolboxHelpPath>c:\program files (x86)\arcgis\desktop10.4\Help\gp</arcToolboxHelpPath>
+		<parameters>
+			<param name="network_dataset" displayname="Network Dataset" type="Required" direction="Input" datatype="Network Dataset Layer" expression="network_dataset">
+				<dialogReference>&lt;DIV STYLE="text-align:Left;"&gt;&lt;DIV&gt;&lt;DIV&gt;&lt;P&gt;&lt;SPAN&gt;Specify a layer from the table of contents in ArcMap that references the network dataset used to perform analysis. If the network dataset is licensed, for example, it is part of StreetMap Premium for ArcGIS, a valid license for accessing the network dataset should be installed before running the tool. &lt;/SPAN&gt;&lt;/P&gt;&lt;P&gt;&lt;SPAN /&gt;&lt;/P&gt;&lt;/DIV&gt;&lt;/DIV&gt;&lt;/DIV&gt;</dialogReference>
+			</param>
+			<param name="service_definition_folder" displayname="Service Definition Folder" type="Required" direction="Input" datatype="Folder" expression="service_definition_folder">
+				<dialogReference>&lt;DIV STYLE="text-align:Left;"&gt;&lt;DIV&gt;&lt;DIV&gt;&lt;P&gt;&lt;SPAN&gt;Specify the folder to store the service definition files for the routing services. &lt;/SPAN&gt;&lt;/P&gt;&lt;/DIV&gt;&lt;/DIV&gt;&lt;/DIV&gt;</dialogReference>
+			</param>
+			<param name="server_data_folder_path" displayname="Server Data Folder Path" type="Required" direction="Input" datatype="String" expression="server_data_folder_path">
+				<dialogReference>&lt;DIV STYLE="text-align:Left;"&gt;&lt;DIV&gt;&lt;DIV&gt;&lt;P&gt;&lt;SPAN&gt;Specify the full path to the folder containing the network dataset on the ArcGIS Server site. This folder must already exist on all the machines that participate in the ArcGIS Server site and should include the network dataset used by the routing services. A valid license, if required to access the network dataset, should be installed on each machine. &lt;/SPAN&gt;&lt;/P&gt;&lt;/DIV&gt;&lt;/DIV&gt;&lt;/DIV&gt;</dialogReference>
+			</param>
+			<param name="server_url" displayname="Server URL" type="Required" direction="Input" datatype="String" expression="server_url">
+				<dialogReference>&lt;DIV STYLE="text-align:Left;"&gt;&lt;DIV&gt;&lt;DIV&gt;&lt;P&gt;&lt;SPAN&gt;Specify the URL for the ArcGIS Server site. The URL should allow administrative access to the ArcGIS Server site. It is usually of the form &lt;/SPAN&gt;&lt;SPAN STYLE="font-style:italic;"&gt;https://machine.domain.com:6443/arcgis&lt;/SPAN&gt;&lt;/P&gt;&lt;P&gt;&lt;SPAN&gt;If you use &lt;/SPAN&gt;&lt;SPAN STYLE="font-style:italic;"&gt;https&lt;/SPAN&gt;&lt;SPAN&gt; in the server url, you need to ensure that your GIS server is using a valid SSL certificate or your GIS Server's SSL certificate is installed as a trusted certificate by &lt;/SPAN&gt;&lt;A href="http://esriurl.com/oscertstore"&gt;&lt;SPAN&gt;importing&lt;/SPAN&gt;&lt;/A&gt;&lt;SPAN&gt; the certificate into the OS certificate store on the machine running Publish Routing Services tool.&lt;/SPAN&gt;&lt;/P&gt;&lt;/DIV&gt;&lt;/DIV&gt;&lt;/DIV&gt;</dialogReference>
+			</param>
+			<param name="user_name" displayname="User Name" type="Optional" direction="Input" datatype="String" expression="{user_name}">
+				<dialogReference>&lt;DIV STYLE="text-align:Left;"&gt;&lt;DIV&gt;&lt;DIV&gt;&lt;P&gt;&lt;SPAN&gt;Specify the user name for a user with adminstrator privilege for managing the ArcGIS Server site. If the GIS Server is federated with Portal for ArcGIS, the user name parameter is not required as the credentials for the user signed in to ArcGIS for Desktop is used. &lt;/SPAN&gt;&lt;/P&gt;&lt;/DIV&gt;&lt;/DIV&gt;&lt;/DIV&gt;</dialogReference>
+			</param>
+			<param name="password" displayname="Password" type="Optional" direction="Input" datatype="String Hidden" expression="{password}">
+				<dialogReference>&lt;DIV STYLE="text-align:Left;"&gt;&lt;DIV&gt;&lt;DIV&gt;&lt;P&gt;&lt;SPAN&gt;Specify the password for a user with adminstrator privilege for managing the ArcGIS Server site. If the GIS Server is federated with Portal for ArcGIS, the password parameter is not required as the credentials for the user signed in to ArcGIS for Desktop is used. &lt;/SPAN&gt;&lt;/P&gt;&lt;/DIV&gt;&lt;/DIV&gt;&lt;/DIV&gt;</dialogReference>
+			</param>
+		</parameters>
+		<summary>&lt;DIV STYLE="text-align:Left;"&gt;&lt;DIV&gt;&lt;DIV&gt;&lt;P&gt;&lt;SPAN&gt;The tool publishes routing services to an ArcGIS Server site. The services can be used to perform route, closest facility, service area, location-allocation and vehicle routing problem analyses on a transportation network in synchronous and asynchronous execution modes. After running the tool, the routing services can be &lt;/SPAN&gt;&lt;A href="http://serverdev.arcgis.com/en/portal/latest/administer/windows/configure-services.htm"&gt;&lt;SPAN&gt;configured&lt;/SPAN&gt;&lt;/A&gt;&lt;SPAN&gt; with Portal for ArcGIS as route and network utility services that can be used by applications such as the directions button or the analysis tools in map viewer or with ArcGIS Pro. &lt;/SPAN&gt;&lt;/P&gt;&lt;/DIV&gt;&lt;/DIV&gt;&lt;/DIV&gt;</summary>
+		<usage>&lt;DIV STYLE="text-align:Left;"&gt;&lt;DIV&gt;&lt;DIV&gt;&lt;UL&gt;&lt;LI&gt;&lt;P&gt;&lt;SPAN&gt;The tool requires a Network Analyst Extension license.&lt;/SPAN&gt;&lt;/P&gt;&lt;/LI&gt;&lt;LI&gt;&lt;P&gt;&lt;SPAN&gt;The tool should be run only from within ArcMap and not as a stand-alone python script as it requires a network dataset layer that references the network dataset.&lt;/SPAN&gt;&lt;/P&gt;&lt;/LI&gt;&lt;LI&gt;&lt;P&gt;&lt;SPAN&gt;The tool does not copy the network dataset to the ArcGIS Server site. The data should already exist on all machines that are participating in ArcGIS Server site.&lt;/SPAN&gt;&lt;/P&gt;&lt;/LI&gt;&lt;LI&gt;&lt;P&gt;&lt;SPAN&gt;If your are publishing services to a GIS Server that is federated with Portal for ArcGIS, you must be &lt;/SPAN&gt;&lt;A href="http://esriurl.com/signinpdesktop"&gt;&lt;SPAN&gt;signed in to the portal &lt;/SPAN&gt;&lt;/A&gt;&lt;SPAN&gt;from ArcMap with a user that has administrator privleges for managing the portal. You can use ArcGIS Administrator application to &lt;/SPAN&gt;&lt;A href="http://esriurl.com/mpcdesktop"&gt;&lt;SPAN&gt;manage portal connections&lt;/SPAN&gt;&lt;/A&gt;&lt;SPAN&gt;. &lt;/SPAN&gt;&lt;/P&gt;&lt;/LI&gt;&lt;/UL&gt;&lt;/DIV&gt;&lt;/DIV&gt;&lt;/DIV&gt;</usage>
+	</tool>
+	<dataIdInfo>
+		<idCitation>
+			<resTitle>Publish Routing Services</resTitle>
+		</idCitation>
+		<idAbs>&lt;DIV STYLE="text-align:Left;"&gt;&lt;DIV&gt;&lt;DIV&gt;&lt;P&gt;&lt;SPAN&gt;The tool publishes routing services to an ArcGIS Server site. The services can be used to perform route, closest facility, service area, location-allocation and vehicle routing problem analyses on a transportation network in synchronous and asynchronous execution modes. After running the tool, the routing services can be &lt;/SPAN&gt;&lt;A href="http://serverdev.arcgis.com/en/portal/latest/administer/windows/configure-services.htm"&gt;&lt;SPAN&gt;configured&lt;/SPAN&gt;&lt;/A&gt;&lt;SPAN&gt; with Portal for ArcGIS as route and network utility services that can be used by applications such as the directions button or the analysis tools in map viewer or with ArcGIS Pro. &lt;/SPAN&gt;&lt;/P&gt;&lt;/DIV&gt;&lt;/DIV&gt;&lt;/DIV&gt;</idAbs>
+		<searchKeys>
+			<keyword>routing</keyword>
+			<keyword>publish</keyword>
+			<keyword>service</keyword>
+		</searchKeys>
+	</dataIdInfo>
+	<distInfo>
+		<distributor>
+			<distorFormat>
+				<formatName>ArcToolbox Tool</formatName>
+			</distorFormat>
+		</distributor>
+	</distInfo>
+	<mdHrLv>
+		<ScopeCd value="005"/>
+	</mdHrLv>
+</metadata>

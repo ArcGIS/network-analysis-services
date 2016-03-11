@@ -1,0 +1,61 @@
+<metadata xml:lang="en">
+	<!--
+ /*
+ * Copyright 2016 Esri
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+       http://www.apache.org/licenses/LICENSE-2.0
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and limitations under the License.​
+ */
+ -->
+	<Esri>
+		<CreaDate>20150429</CreaDate>
+		<CreaTime>20262500</CreaTime>
+		<ArcGISFormat>1.0</ArcGISFormat>
+		<SyncOnce>TRUE</SyncOnce>
+		<ModDate>20151011</ModDate>
+		<ModTime>133640</ModTime>
+		<scaleRange>
+			<minScale>150000000</minScale>
+			<maxScale>5000</maxScale>
+		</scaleRange>
+		<ArcGISProfile>ItemDescription</ArcGISProfile>
+	</Esri>
+	<tool name="GetTravelModes" displayname="GetTravelModes" toolboxalias="" xmlns="">
+		<arcToolboxHelpPath>c:\program files (x86)\arcgis\desktop10.3\Help\gp</arcToolboxHelpPath>
+		<parameters>
+			<param name="propertiesFile" displayname="Properties File" type="Required" direction="Input" datatype="File" expression="propertiesFile"/>
+			<param name="defaultTravelModesFile" displayname="Default Travel Modes File" type="Required" direction="Input" datatype="File" expression="defaultTravelModesFile"/>
+			<param name="defaultLocalizedTravelModesFile" displayname="Default Localized Travel Modes File" type="Optional" direction="Input" datatype="File" expression="{defaultLocalizedTravelModesFile}"/>
+		</parameters>
+		<summary>&lt;DIV STYLE="text-align:Left;"&gt;&lt;DIV&gt;&lt;DIV&gt;&lt;P&gt;&lt;SPAN&gt;Get a list of travel modes defined for your organization that can be used with directions and routing services available in ArcGIS Online.&lt;/SPAN&gt;&lt;/P&gt;&lt;/DIV&gt;&lt;/DIV&gt;&lt;/DIV&gt;</summary>
+	</tool>
+	<dataIdInfo>
+		<idCitation>
+			<resTitle>GetTravelModes</resTitle>
+		</idCitation>
+		<idAbs>&lt;DIV STYLE="text-align:Left;"&gt;&lt;DIV&gt;&lt;DIV&gt;&lt;P&gt;&lt;SPAN&gt;Get a list of travel modes defined for your organization that can be used with directions and routing services available in ArcGIS Online.&lt;/SPAN&gt;&lt;/P&gt;&lt;/DIV&gt;&lt;/DIV&gt;&lt;/DIV&gt;</idAbs>
+		<idCredit>Esri</idCredit>
+		<searchKeys>
+			<keyword>travel modes</keyword>
+		</searchKeys>
+		<resConst>
+			<Consts>
+				<useLimit>&lt;DIV STYLE="text-align:Left;"&gt;&lt;P STYLE="font-size:16ptmargin:7 0 7 0;"&gt;&lt;SPAN&gt;&lt;SPAN&gt;This tool is available for users with an &lt;/SPAN&gt;&lt;/SPAN&gt;&lt;A href="http://www.arcgis.com/features/plans/pricing.html"&gt;&lt;SPAN&gt;&lt;SPAN&gt;ArcGIS Online organizational subscription&lt;/SPAN&gt;&lt;/SPAN&gt;&lt;/A&gt;&lt;SPAN&gt;. To access this geoprocessing tool, you'll need to sign in with an account that is a member of an organizational subscription. Executing this tool does not incur &lt;/SPAN&gt;&lt;A href="http://links.esri.com/network-analysis-service-credits"&gt;&lt;SPAN&gt;&lt;SPAN&gt;service credits&lt;/SPAN&gt;&lt;/SPAN&gt;&lt;/A&gt;&lt;/P&gt;&lt;/DIV&gt;</useLimit>
+			</Consts>
+		</resConst>
+	</dataIdInfo>
+	<distInfo>
+		<distributor>
+			<distorFormat>
+				<formatName>ArcToolbox Tool</formatName>
+			</distorFormat>
+		</distributor>
+	</distInfo>
+	<mdHrLv>
+		<ScopeCd value="005"/>
+	</mdHrLv>
+</metadata>

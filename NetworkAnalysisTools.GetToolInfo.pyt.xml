@@ -1,0 +1,66 @@
+<metadata xml:lang="en">
+	<!--
+ /*
+ * Copyright 2016 Esri
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+       http://www.apache.org/licenses/LICENSE-2.0
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and limitations under the License.​
+ */
+ -->
+	<Esri>
+		<CreaDate>20151018</CreaDate>
+		<CreaTime>10501300</CreaTime>
+		<ArcGISFormat>1.0</ArcGISFormat>
+		<SyncOnce>TRUE</SyncOnce>
+		<ModDate>20151018</ModDate>
+		<ModTime>11244800</ModTime>
+		<scaleRange>
+			<minScale>150000000</minScale>
+			<maxScale>5000</maxScale>
+		</scaleRange>
+		<ArcGISProfile>ItemDescription</ArcGISProfile>
+	</Esri>
+	<tool name="GetToolInfo" displayname="GetToolInfo" toolboxalias="" xmlns="">
+		<arcToolboxHelpPath>c:\program files (x86)\arcgis\desktop10.3\Help\gp</arcToolboxHelpPath>
+		<parameters>
+			<param name="supportingFilesFolder" displayname="Supporting Files Folder" type="Required" direction="Input" datatype="Folder" expression="supportingFilesFolder"/>
+			<param name="serviceName" displayname="Service Name" type="Required" direction="Input" datatype="String" expression="asyncClosestFacility | asyncLocationAllocation | asyncRoute | asyncServiceArea | asyncVRP | syncVRP">
+				<dialogReference>&lt;DIV STYLE="text-align:Left;"&gt;&lt;DIV&gt;&lt;DIV&gt;&lt;P&gt;&lt;SPAN&gt;Specify the service name containing the tool. The parameter value should be specified using one of the following keywords that reference a particular geoprocessing service.&lt;/SPAN&gt;&lt;/P&gt;&lt;UL&gt;&lt;LI&gt;&lt;P&gt;&lt;SPAN&gt;asyncClosestFacility - The asynchronous geoprocessing service used to perform the closest facility analysis.&lt;/SPAN&gt;&lt;/P&gt;&lt;/LI&gt;&lt;LI&gt;&lt;P&gt;&lt;SPAN&gt;asyncLocationAllocation - The asynchronous geoprocessing service used to perform the location-allocation analysis.&lt;/SPAN&gt;&lt;/P&gt;&lt;/LI&gt;&lt;LI&gt;&lt;P&gt;&lt;SPAN&gt;asyncRoute - The asynchronous geoprocessing service used to perform the route analysis.&lt;/SPAN&gt;&lt;/P&gt;&lt;/LI&gt;&lt;LI&gt;&lt;P&gt;&lt;SPAN&gt;asyncServiceArea - The asynchronous geoprocessing service used to perform the service area analysis.&lt;/SPAN&gt;&lt;/P&gt;&lt;/LI&gt;&lt;LI&gt;&lt;P&gt;&lt;SPAN&gt;asyncVRP - The asynchronous geoprocessing service used to perform the vehicle routing problem analysis.&lt;/SPAN&gt;&lt;/P&gt;&lt;/LI&gt;&lt;LI&gt;&lt;P&gt;&lt;SPAN&gt;syncVRP - The synchronous geoprocessing service used to perform the vehicle routing problem analysis.&lt;/SPAN&gt;&lt;/P&gt;&lt;/LI&gt;&lt;/UL&gt;&lt;P&gt;&lt;SPAN&gt;The default value is asyncRoute.&lt;/SPAN&gt;&lt;/P&gt;&lt;/DIV&gt;&lt;/DIV&gt;&lt;/DIV&gt;</dialogReference>
+			</param>
+			<param name="toolName" displayname="Tool Name" type="Required" direction="Input" datatype="String" expression="toolName">
+				<dialogReference>&lt;DIV STYLE="text-align:Left;"&gt;&lt;DIV&gt;&lt;DIV&gt;&lt;P&gt;&lt;SPAN&gt;Specify the tool name in the geoprocessing service. The parameter value should be a valid tool name in the geoprocessing service specified by the serviceName parameter. The default value is FindRoutes.&lt;/SPAN&gt;&lt;/P&gt;&lt;/DIV&gt;&lt;/DIV&gt;&lt;/DIV&gt;</dialogReference>
+			</param>
+		</parameters>
+		<summary>&lt;DIV STYLE="text-align:Left;"&gt;&lt;DIV&gt;&lt;DIV&gt;&lt;P&gt;&lt;SPAN&gt;Get additional information such as the description of the network dataset used for the analysis and the execution limits for a tool in a geoprocessing service.&lt;/SPAN&gt;&lt;/P&gt;&lt;/DIV&gt;&lt;/DIV&gt;&lt;/DIV&gt;</summary>
+	</tool>
+	<dataIdInfo>
+		<idCitation>
+			<resTitle>GetToolInfo</resTitle>
+		</idCitation>
+		<idAbs>&lt;DIV STYLE="text-align:Left;"&gt;&lt;DIV&gt;&lt;DIV&gt;&lt;P&gt;&lt;SPAN&gt;Get additional information such as the description of the network dataset used for the analysis and the execution limits for a tool in a geoprocessing service.&lt;/SPAN&gt;&lt;/P&gt;&lt;/DIV&gt;&lt;/DIV&gt;&lt;/DIV&gt;</idAbs>
+		<searchKeys>
+			<keyword>service limits</keyword>
+			<keyword>network description</keyword>
+			<keyword>network dataset description</keyword>
+		</searchKeys>
+		<resConst>
+			<Consts>
+				<useLimit>&lt;DIV STYLE="text-align:Left;"&gt;&lt;DIV&gt;&lt;DIV&gt;&lt;P&gt;&lt;SPAN&gt;This tool is available for users with an &lt;/SPAN&gt;&lt;A href="http://www.arcgis.com/features/plans/pricing.html"&gt;&lt;SPAN&gt;ArcGIS Online organizational subscription&lt;/SPAN&gt;&lt;/A&gt;&lt;SPAN&gt;. To access this geoprocessing tool, you'll need to sign in with an account that is a member of an organizational subscription. Executing this tool does not incur &lt;/SPAN&gt;&lt;A href="http://links.esri.com/network-analysis-service-credits"&gt;&lt;SPAN&gt;service credits&lt;/SPAN&gt;&lt;/A&gt;&lt;SPAN&gt;.&lt;/SPAN&gt;&lt;A href="http://www.arcgis.com/features/plans/pricing.html" /&gt;&lt;/P&gt;&lt;/DIV&gt;&lt;/DIV&gt;&lt;/DIV&gt;</useLimit>
+			</Consts>
+		</resConst>
+	</dataIdInfo>
+	<distInfo>
+		<distributor>
+			<distorFormat>
+				<formatName>ArcToolbox Tool</formatName>
+			</distorFormat>
+		</distributor>
+	</distInfo>
+	<mdHrLv>
+		<ScopeCd value="005"/>
+	</mdHrLv>
+</metadata>
