@@ -40,7 +40,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 
 
-A copy of the license is available in the repository's [license.txt]( https://raw.github.com/Esri/network-analysis-services/master/license.txt) file.
+A copy of the license is available in the repository's [license.txt](license.txt) file.
 
 
 [](Esri Tags: ArcGIS Server Routing Services)
