@@ -582,6 +582,7 @@ class PublishRoutingServices(object):
         self.owningSystemUrl = ""
         self.ignoreSSLErrors = False
         self.tokenReferrer = None
+        self.publishingToolsToolbox = None
 
         #Write messages to a file and as GP messages
         log_file = os.path.join(kwargs["service_definition_folder"], "PublishRoutingServices.log")
@@ -667,6 +668,38 @@ class PublishRoutingServices(object):
             if not user_privilege in ("ADMINISTER"):
                 self.logger.error("User {0} does not have administrator privilege".format(self.userName))
                 raise arcpy.ExecuteError
+
+        #Create a AGS file with server connection info
+        ags_connection_file_name = "server.ags"
+        self.agsConnectionFile = os.path.join(self.serviceDefinitionFolder, ags_connection_file_name)
+        #For federated servers, create the connection file using the signed in user credentials by not passing
+        #an explicit user name and password.
+        if self.owningSystemUrl:
+             user_name = None
+             password = None
+        else:
+            user_name = self.userName
+            password = self.password
+        arcpy.mapping.CreateGISServerConnectionFile("ADMINISTER_GIS_SERVICES", self.serviceDefinitionFolder,
+                                                    ags_connection_file_name, "{0}/admin".format(self.serverUrl),
+                                                    "ARCGIS_SERVER", True, None, user_name, password, True)
+        
+        #Check if file gdb containing the network dataset is accessible on the server
+        nds_filegdb_name = os.path.basename(os.path.dirname(os.path.dirname(self.templateNDSDescribe.catalogPath)))
+        server_nds_filegdb = u"{}/{}".format(self.serverDataFolderPath, nds_filegdb_name) 
+        self.publishingToolsToolbox = "{0};{1}".format(self.agsConnectionFile, "System/PublishingTools")
+        arcpy.ImportToolbox(self.publishingToolsToolbox)
+        validate_data_store_result = arcpy.ValidateServerDataStore_PublishingTools(server_nds_filegdb, "FILE_SHARE")
+        while validate_data_store_result.status < 4:
+            time.sleep(1)
+        if validate_data_store_result.getOutput(0).lower() == "false":
+            #Return an error as the Server Data Folder Path is invalid
+            self.logger.error("GIS Server cannot access the file geodatabase containing the network dataset at {}".format(validate_data_store_result.getInput(0)))
+            self.logger.error(u"Invalid value, {}, for the Server Data Folder Path parameter.".format(self.serverDataFolderPath))
+            self.logger.error("The value for the Server Data Folder Path parameter must be the folder on the GIS Server containing the file geodatabase that stores your network dataset.")
+            raise arcpy.ExecuteError
+        else:
+            self.logger.debug(u"File geodatabase containing the network dataset on GIS Server: {}".format(validate_data_store_result.getInput(0)))
         
         #Check if service folder name Routing exists. If not create it
         #Get a list of existing service folders
@@ -713,21 +746,6 @@ class PublishRoutingServices(object):
                 self.logger.error("Failed to create {0} service folder".format(ROUTING_SERVICE_FOLDER_NAME))
                 raise arcpy.ExecuteError
 
-        #Create a AGS file with server connection info
-        ags_connection_file_name = "server.ags"
-        self.agsConnectionFile = os.path.join(self.serviceDefinitionFolder, ags_connection_file_name)
-        #For federated servers, create the connection file using the signed in user credentials by not passing
-        #an explicit user name and password.
-        if self.owningSystemUrl:
-             user_name = None
-             password = None
-        else:
-            user_name = self.userName
-            password = self.password
-        arcpy.mapping.CreateGISServerConnectionFile("ADMINISTER_GIS_SERVICES", self.serviceDefinitionFolder,
-                                                    ags_connection_file_name, "{0}/admin".format(self.serverUrl),
-                                                    "ARCGIS_SERVER", True, None, user_name, password, True)
-
         #Register the folder containing the network dataset in the data store
         #If the data store item already exists, remove it
         existing_data_store_items = arcpy.ListDataStoreItems(self.agsConnectionFile, "FOLDER")
@@ -746,7 +764,7 @@ class PublishRoutingServices(object):
             raise arcpy.ExecuteError
         
         #Create a folder to store supporting files. If the folder exists, delete it
-        supporting_files_folder = os.path.join(self.serviceDefinitionFolder, SUPPORTING_FILES_FOLDER_NAME)
+        supporting_files_folder = os.path.join(arcpy.env.scratchFolder, SUPPORTING_FILES_FOLDER_NAME)
         if os.path.exists(supporting_files_folder):
             try:
                 shutil.rmtree(supporting_files_folder)
@@ -1121,6 +1139,14 @@ class PublishRoutingServices(object):
         #skip cleanup if log level is DEBUG
         if self.logger.DEBUG:
             return
+        
+        #Remove imported Remote Toolboxes
+        try:
+            arcpy.RemoveToolbox(self.publishingToolsToolbox)
+        except Exception as ex:
+            self.logger.debug("Failed to remove toolbox {}".format(self.publishingToolsToolbox))
+            self.logger.debug(str(ex))
+
         #Delete intermidiate files
         for f in (self.agsConnectionFile, self.serviceMapDocument):
             if f:
@@ -1133,6 +1159,7 @@ class PublishRoutingServices(object):
         if self.supportingFilesFolder:
             shutil.rmtree(self.supportingFilesFolder, ignore_errors=True)
 
+        
         #Close the file handler
         self.logger.fileLogger.handlers[0].close()
 
