@@ -248,6 +248,24 @@ class PublishRoutingServices(object):
                 user_name_param.setIDMessage("ERROR", 735, user_name_param.displayName)
             if not password_param.value:
                 password_param.setIDMessage("ERROR", 735, password_param.displayName)
+
+        #Make sure the Service Definition Folder in not inside the folder containing the network dataset on client machine
+        network_dataset_param = parameters[0]
+        sd_folder_param = parameters[1]
+        network_dataset = network_dataset_param.valueAsText
+        sd_folder = sd_folder_param.valueAsText
+        if network_dataset and sd_folder:
+            nds_desc = arcpy.Describe(network_dataset)
+            nds_catalog_path = nds_desc.catalogPath
+            nds_folder = os.path.dirname(os.path.dirname(os.path.dirname(nds_catalog_path)))
+            if os.path.normcase(nds_folder) in os.path.normcase(sd_folder):
+                ERR_MSG = "The service definition folder cannot be in the same folder as your network dataset."
+                sd_folder_param.setErrorMessage(ERR_MSG)
+
+
+
+
+
         return
 
     def execute(self, parameters, messages):
