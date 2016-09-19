@@ -896,16 +896,33 @@ class PublishRoutingServices(object):
         arcpy.server.StageService(nautils_gpservice_sddraft, nautils_gp_service_sd)
 
         ##Publish Network Analysis Geoprocessing service
+        self.logger.info("Running geoprocessing tools to publish network analysis geoprocessing service")
+        
         #Use the endpoints of the first feature in the streets edge source as the inputs for gp services
         system_junctions_feature_class = os.path.join(os.path.dirname(self.templateNDSDescribe.catalogPath), 
                                                       self.templateNDSDescribe.systemJunctionSource.name)
         with arcpy.da.SearchCursor(system_junctions_feature_class, "SHAPE@") as cursor:
             street_points = [cursor.next()[0], cursor.next()[0]]
-
-        self.logger.info("Running geoprocessing tools to publish network analysis geoprocessing service")
-
+        self.logger.debug("Creating stops to use when running geoprocessing tools")
         rt_stops = "in_memory\\InputRouteStops"
         arcpy.management.CopyFeatures(street_points, rt_stops)
+        #Locate the points on the network in case the network dataset is licensed for only a sub-region
+        #Locate only on edge sources as junction sources in a licensed datasets are not export protected but edge
+        #sources like streets are export protected.
+        edge_source_search_criteria = [[src.name, "SHAPE"] for src in self.templateNDSDescribe.edgeSources] 
+        junc_source_search_criteria = [[src.name, "NONE"] for src in self.templateNDSDescribe.junctionSources]
+        search_criteria = edge_source_search_criteria + junc_source_search_criteria
+        self.logger.debug("Calculating locations on the network")
+        arcpy.na.CalculateLocations(rt_stops, self.templateNDS, "25000 Miles", search_criteria)
+        #Update the stop geometry based on location snapped on the network
+        self.logger.debug("Updating stop geometries to snap on the network")
+        with arcpy.da.UpdateCursor(rt_stops, ("SnapX", "SnapY", "SHAPE@")) as cursor:     
+            for i,row in enumerate(cursor):
+                row[-1] = arcpy.PointGeometry(arcpy.Point(row[0], row[1]), self.templateNDSDescribe.spatialReference)
+                street_points[i] = row[-1]
+                cursor.updateRow(row)        
+        
+        #Run geoprocessing tools that are inculded in the GP service.
         find_routes_result = nast.FindRoutes(rt_stops, "Minutes", supporting_files_folder)
 
         incidents = "in_memory\\InputIncidents"
