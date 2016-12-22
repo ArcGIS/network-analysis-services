@@ -1,47 +1,31 @@
-<metadata xml:lang="en">
-	<!--
- /*
- * Copyright 2016 Esri
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
-       http://www.apache.org/licenses/LICENSE-2.0
- * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
- * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and limitations under the License.​
- */
- -->
+<?xml version="1.0" encoding="utf-8"?>
+<metadata>
 	<Esri>
-		<CreaDate>20151018</CreaDate>
-		<CreaTime>10501300</CreaTime>
+		<CreaDate>20161007</CreaDate>
+		<CreaTime>11352000</CreaTime>
 		<ArcGISFormat>1.0</ArcGISFormat>
 		<SyncOnce>TRUE</SyncOnce>
-		<ModDate>20151018</ModDate>
-		<ModTime>11244800</ModTime>
-		<scaleRange>
-			<minScale>150000000</minScale>
-			<maxScale>5000</maxScale>
-		</scaleRange>
-		<ArcGISProfile>ItemDescription</ArcGISProfile>
+		<ModDate>20161114</ModDate>
+		<ModTime>142836</ModTime>
 	</Esri>
-	<tool name="GetToolInfo" displayname="GetToolInfo" toolboxalias="" xmlns="">
-		<arcToolboxHelpPath>c:\program files (x86)\arcgis\desktop10.3\Help\gp</arcToolboxHelpPath>
-		<parameters>
-			<param name="supportingFilesFolder" displayname="Supporting Files Folder" type="Required" direction="Input" datatype="Folder" expression="supportingFilesFolder"/>
-			<param name="serviceName" displayname="Service Name" type="Required" direction="Input" datatype="String" expression="asyncClosestFacility | asyncLocationAllocation | asyncRoute | asyncServiceArea | asyncVRP | syncVRP">
-				<dialogReference>&lt;DIV STYLE="text-align:Left;"&gt;&lt;DIV&gt;&lt;DIV&gt;&lt;P&gt;&lt;SPAN&gt;Specify the service name containing the tool. The parameter value should be specified using one of the following keywords that reference a particular geoprocessing service.&lt;/SPAN&gt;&lt;/P&gt;&lt;UL&gt;&lt;LI&gt;&lt;P&gt;&lt;SPAN&gt;asyncClosestFacility - The asynchronous geoprocessing service used to perform the closest facility analysis.&lt;/SPAN&gt;&lt;/P&gt;&lt;/LI&gt;&lt;LI&gt;&lt;P&gt;&lt;SPAN&gt;asyncLocationAllocation - The asynchronous geoprocessing service used to perform the location-allocation analysis.&lt;/SPAN&gt;&lt;/P&gt;&lt;/LI&gt;&lt;LI&gt;&lt;P&gt;&lt;SPAN&gt;asyncRoute - The asynchronous geoprocessing service used to perform the route analysis.&lt;/SPAN&gt;&lt;/P&gt;&lt;/LI&gt;&lt;LI&gt;&lt;P&gt;&lt;SPAN&gt;asyncServiceArea - The asynchronous geoprocessing service used to perform the service area analysis.&lt;/SPAN&gt;&lt;/P&gt;&lt;/LI&gt;&lt;LI&gt;&lt;P&gt;&lt;SPAN&gt;asyncVRP - The asynchronous geoprocessing service used to perform the vehicle routing problem analysis.&lt;/SPAN&gt;&lt;/P&gt;&lt;/LI&gt;&lt;LI&gt;&lt;P&gt;&lt;SPAN&gt;syncVRP - The synchronous geoprocessing service used to perform the vehicle routing problem analysis.&lt;/SPAN&gt;&lt;/P&gt;&lt;/LI&gt;&lt;/UL&gt;&lt;P&gt;&lt;SPAN&gt;The default value is asyncRoute.&lt;/SPAN&gt;&lt;/P&gt;&lt;/DIV&gt;&lt;/DIV&gt;&lt;/DIV&gt;</dialogReference>
-			</param>
-			<param name="toolName" displayname="Tool Name" type="Required" direction="Input" datatype="String" expression="toolName">
-				<dialogReference>&lt;DIV STYLE="text-align:Left;"&gt;&lt;DIV&gt;&lt;DIV&gt;&lt;P&gt;&lt;SPAN&gt;Specify the tool name in the geoprocessing service. The parameter value should be a valid tool name in the geoprocessing service specified by the serviceName parameter. The default value is FindRoutes.&lt;/SPAN&gt;&lt;/P&gt;&lt;/DIV&gt;&lt;/DIV&gt;&lt;/DIV&gt;</dialogReference>
-			</param>
-		</parameters>
-		<summary>&lt;DIV STYLE="text-align:Left;"&gt;&lt;DIV&gt;&lt;DIV&gt;&lt;P&gt;&lt;SPAN&gt;Get additional information such as the description of the network dataset used for the analysis and the execution limits for a tool in a geoprocessing service.&lt;/SPAN&gt;&lt;/P&gt;&lt;/DIV&gt;&lt;/DIV&gt;&lt;/DIV&gt;</summary>
-	</tool>
 	<dataIdInfo>
 		<idCitation>
 			<resTitle>GetToolInfo</resTitle>
+			<date>
+				<createDate>20161007</createDate>
+			</date>
 		</idCitation>
-		<idAbs>&lt;DIV STYLE="text-align:Left;"&gt;&lt;DIV&gt;&lt;DIV&gt;&lt;P&gt;&lt;SPAN&gt;Get additional information such as the description of the network dataset used for the analysis and the execution limits for a tool in a geoprocessing service.&lt;/SPAN&gt;&lt;/P&gt;&lt;/DIV&gt;&lt;/DIV&gt;&lt;/DIV&gt;</idAbs>
+		<idAbs>
+			<para>
+ Get additional information such as the description of the network dataset used for the analysis and the execution limits for a tool in the geoprocessing service.
+</para>
+		</idAbs>
+		<descKeys KeyTypCd="005">
+			<keyTyp>
+				<keyTyp>005</keyTyp>
+			</keyTyp>
+			<keyword/>
+		</descKeys>
 		<searchKeys>
 			<keyword>service limits</keyword>
 			<keyword>network description</keyword>
@@ -60,7 +44,135 @@
 			</distorFormat>
 		</distributor>
 	</distInfo>
-	<mdHrLv>
-		<ScopeCd value="005"/>
-	</mdHrLv>
+	<mdDateSt>20161108</mdDateSt>
+	<mdContact>
+		<rpOrgName>Environmental Systems Research Institute, Inc. (Esri)</rpOrgName>
+		<rpCntInfo>
+			<cntAddress>
+				<delPoint>380 New York Street</delPoint>
+				<city>Redlands</city>
+				<adminArea>California</adminArea>
+				<postCode>92373-8100</postCode>
+				<eMailAdd>info@esri.com</eMailAdd>
+				<country>United States</country>
+			</cntAddress>
+			<cntPhone>
+				<voiceNum>909-793-2853</voiceNum>
+				<faxNum>909-793-5953</faxNum>
+			</cntPhone>
+			<cntOnlineRes>
+				<linkage>http://www.esri.com</linkage>
+			</cntOnlineRes>
+		</rpCntInfo>
+		<role>
+			<RoleCd>007</RoleCd>
+		</role>
+	</mdContact>
+	<tool displayname="GetToolInfo" name="GetToolInfo" softwarerestriction="none" toolboxalias="nast">
+		<summary>
+			<para>
+ Get additional information such as the description of the network dataset used for the analysis and the execution limits for a tool in the geoprocessing service.
+</para>
+		</summary>
+		<alink_name>
+GetToolInfo
+_naagol</alink_name>
+		<parameters>
+			<param name="supportingFilesFolder" displayname="Supporting Files Folder" type="Required" direction="Input" datatype="Folder" expression="supportingFilesFolder"/>
+			<param datatype="String" direction="Input" displayname="Service Name" expression="asyncRoute | asyncClosestFacility | asyncLocationAllocation | asyncODCostMatrix | asyncServiceArea | asyncVRP | syncVRP" name="serviceName" sync="true" type="Required">
+				<dialogReference>
+					<para>
+ Specify the service name containing the tool. The parameter value should be specified using one of the following keywords that reference a particular geoprocessing service.</para>
+					<para>
+						<bulletList>
+							<bullet_item> asyncClosestFacility—The asynchronous geoprocessing service used to perform the closest facility analysis. </bullet_item>
+							<bullet_item> asyncLocationAllocation—The asynchronous geoprocessing service used to perform the location-allocation analysis.</bullet_item>
+							<bullet_item> asyncRoute—The asynchronous geoprocessing service used to perform the route analysis.</bullet_item>
+							<bullet_item> asyncServiceArea—The asynchronous geoprocessing service used to perform the service area analysis.</bullet_item>
+							<bullet_item> asyncVRP—The asynchronous geoprocessing service used to perform the vehicle routing problem analysis.</bullet_item>
+							<bullet_item> syncVRP—The synchronous geoprocessing service used to perform the vehicle routing problem analysis.</bullet_item>
+							<bullet_item>asyncODCostMatrix— The asynchronous geoprocessing service used to perform the origin destination cost matrix analysis.</bullet_item>
+						</bulletList>
+					</para>
+					<para> The default value is asyncRoute.</para>
+				</dialogReference>
+			</param>
+			<param datatype="String" direction="Input" displayname="Tool Name" expression="FindRoutes | EditVehicleRoutingProblem | FindClosestFacilities | GenerateOriginDestinationCostMatrix | GenerateServiceAreas | SolveLocationAllocation | SolveVehicleRoutingProblem" name="toolName" sync="true" type="Required">
+				<dialogReference>
+					<para>
+ Specify the tool name in the geoprocessing service. The parameter value should be a valid tool name in the geoprocessing service specified by the serviceName parameter. Valid tool names are </para>
+					<para>
+						<bulletList>
+							<bullet_item>FindClosestFacilities for asyncClosestFacility service</bullet_item>
+							<bullet_item>SolveLocationAllocation for asyncLocationAllocation service</bullet_item>
+							<bullet_item>FindRoutes for Route service</bullet_item>
+							<bullet_item>GenerateServiceAreas for asyncServiceArea service</bullet_item>
+							<bullet_item>SolveVehicleRoutingProblem for asyncVRP service</bullet_item>
+							<bullet_item>EditVehicleRoutingProblem for syncVRP service</bullet_item>
+							<bullet_item>GenerateOriginDestinationCostMatrix for asyncODCostMatrix service</bullet_item>
+						</bulletList>
+					</para>
+					<para>The default value is FindRoutes.
+</para>
+				</dialogReference>
+			</param>
+		</parameters>
+		<returnvalues/>
+		<usage>
+			<bullet_item>
+				<para>
+The tool is meant to be used before executing other tools that are available in the geoprocessing service. For example, if you need to identify the maximum number of stops supported by the FindRoutes tool, you can run this tool to determine the limit.
+</para>
+			</bullet_item>
+		</usage>
+		<scriptExamples>
+			<scriptExample>
+				<title>GetToolInfo example</title>
+				<para>The following Python script demonstrates how to use the GetToolInfo tool in a script.</para>
+				<code xml:space="preserve">'''
+The script shows how to use the GetToolInfo tool to get the maximum number of stops
+that can be used as inputs with FindRoutes tool.
+'''
+import sys
+import json
+
+import arcpy
+
+#Change the username and password applicable to your own ArcGIS Online account
+username = "&lt;your user name&gt;"
+password = "&lt;your password&gt;"
+
+utility_service = "https://logistics.arcgis.com/arcgis/services;World/Utilities;{0};{1}".format(username, password)
+
+#Add the geoprocessing service as a toolbox.
+arcpy.ImportToolbox(utility_service)
+
+#Call the tool to get the limits for the FindRoutes tool 
+result = arcpy.Utilities.GetToolInfo("asyncRoute", "FindRoutes")
+
+#Print any warning or error messages returned from the tool
+result_severity = arcpy.GetMaxSeverity()
+if result_severity == 2:
+    arcpy.AddMessage("An error occured when running the tool")
+    arcpy.AddMessage(arcpy.GetMessages(2))
+    sys.exit(2)
+elif result_severity == 1:
+    arcpy.AddMessage("Warnings were returned when running the tool")
+    arcpy.AddMessage(arcpy.GetMessages(1))
+
+#Retrieve the tool info and convert it to a dictionary
+output_tool_info_json = result.getOutput(0)
+output_tool_info_dict = json.loads(output_tool_info_json)
+
+#Retrieve the maximum number of stops allowed by the service
+max_stops = int(output_tool_info_dict["serviceLimits"]["maximumStops"])
+arcpy.AddMessage("The maximum number of stops supported by the FindRoutes tool: {}" .format(max_stops))
+                    </code>
+			</scriptExample>
+		</scriptExamples>
+		<shortdesc>
+The GetToolInfo tool provides additional information such as the description of the network dataset used for the analysis and execution limits for a tool available in the geoprocessing service.
+</shortdesc>
+		<arcToolboxHelpPath>c:\program files (x86)\arcgis\desktop10.5\Help\gp</arcToolboxHelpPath>
+	</tool>
 </metadata>

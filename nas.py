@@ -1,4 +1,4 @@
-########################################################################################
+﻿########################################################################################
 ## Copyright 2016 Esri
 ## Licensed under the Apache License, Version 2.0 (the "License");
 ## you may not use this file except in compliance with the License.
@@ -239,16 +239,29 @@ def get_rest_info():
                 rest_info = {}
     return rest_info
 
-def get_portal_self():
-    '''Return a dictionary containing self response from a portal that the server federates to. Returns an empty
-    dictionary if not running on server or running on a non-federated server'''
+def init_hostedgp():
+    '''Return an instance of hostedgp'''
 
-    portal_self = {}
     try:
         #Do not perform a tenant check as we might run this from a federated server that is not acting as a hosted
         #server (e.g AGOL servers). We are not using hostedgp to create hosted feature services. So tenant check is
         #not required.
         hgp = hostedgp.HostedGP(tenantCheck=False)
+        return hgp
+    except Exception as ex:
+        if LOG_LEVEL == logging.DEBUG:
+            arcpy.AddMessage("An error occured when using hostedgp")
+            arcpy.AddMessage("error function: {}, error message: {}".format(ex.func, ex.errmsg))
+        return None
+
+def get_portal_self(hgp=None):
+    '''Return a dictionary containing self response from a portal that the server federates to. Returns an empty
+    dictionary if not running on server or running on a non-federated server'''
+
+    portal_self = {}
+    try:
+        if not hgp:
+            hgp = init_hostedgp()
         portal_self = json.loads(hgp.GetSelf())
     except Exception as ex:
         if LOG_LEVEL == logging.DEBUG:
@@ -256,6 +269,27 @@ def get_portal_self():
             arcpy.AddMessage("error function: {}, error message: {}".format(ex.func, ex.errmsg))
         portal_self = {}
     return portal_self
+
+def str_to_float(input_str):
+    '''converts a string to a float'''
+
+    #set the locale for all categories to the users default setting. This is required on some OS like German
+    #and Russian to read the appropriate decimal separator 
+
+    locale.setlocale(locale.LC_ALL, '')
+    try:
+        return locale.atof(input_str)
+    except UnicodeDecodeError:
+        return locale.atof(input_str.encode("utf-8", "ignore"))
+    except:
+        if isinstance(input_str, (unicode, str)):
+            if "," in input_str:
+                input_str = input_str.replace(",", ".")
+                return float(input_str)
+            else:
+                raise
+        else:
+            raise
 
 class Logger(object):
     '''Log GP messages. If a log file is provided, log messages to the file.'''
@@ -326,6 +360,9 @@ class NetworkAnalysisTool(object):
 
     MEASUREMENT_UNITS = ["Meters", "Kilometers", "Feet", "Yards", "Miles", "Nautical Miles",
                          "Seconds", "Minutes", "Hours", "Days"]
+    TIME_UNITS = ["Seconds", "Minutes", "Hours", "Days"]
+    DISTANCE_UNITS = ["Meters", "Kilometers", "Feet", "Yards", "Miles", "NauticalMiles"]
+    TIME_ZONE_USAGE = ["Geographically Local", "UTC"]
     NETWORK_DATASET_PROPERTIES_FILENAME = "NetworkDatasetProperties.ini"
     TOOL_INFO_FILENAME = "ToolInfo.json"
 
@@ -662,7 +699,7 @@ class NetworkAnalysisTool(object):
         time_zone_param = arcpy.Parameter("Time_Zone_for_Time_of_Day", "Time Zone for Time of Day", "Input",
                                               "GPString", "Optional")
         time_zone_param.category = "Advanced Analysis"
-        time_zone_param.filter.list = ["Geographically Local", "UTC"]
+        time_zone_param.filter.list = self.TIME_ZONE_USAGE
         time_zone_param.value = "Geographically Local"
         parameters.append(time_zone_param)
         
@@ -736,10 +773,29 @@ class NetworkAnalysisTool(object):
         travel_mode_param.value = "Custom"
         parameters.append(travel_mode_param)
 
+        #Save Output Network Analysis Layer parameter
+        save_output_layer_param = arcpy.Parameter("Save_Output_Network_Analysis_Layer",
+                                                  "Save Output Network Analysis Layer", "Input", "GPBoolean",
+                                                  "Optional")
+        save_output_layer_param.category = "Output"
+        save_output_layer_param.filter.list = ["SAVE_OUTPUT_LAYER ", "NO_SAVE_OUTPUT_LAYER "]
+        save_output_layer_param.value = False
+        parameters.append(save_output_layer_param)
+
+        #Overrides parameter
+        overrides_param = arcpy.Parameter("Overrides", "Overrides", "Input", "GPString", "Optional")
+        overrides_param.category = "Advanced Analysis"
+        parameters.append(overrides_param)
+
         #Solve succeeded param
         solve_succeeded_param = arcpy.Parameter("Solve_Succeeded", "Solve Succeeded", "Output", "GPBoolean", "Derived")
         solve_succeeded_param.value = False 
-        parameters.append(solve_succeeded_param) 
+        parameters.append(solve_succeeded_param)
+        
+        #Output Network Analysis Layer parameter
+        output_layer_param = arcpy.Parameter("Output_Network_Analysis_Layer", "Output Network Analysis Layer",
+                                             "Output", "DEFile", "Derived")
+        parameters.append(output_layer_param) 
 
         return {param.name : param for param in parameters}
 
@@ -778,6 +834,18 @@ class NetworkAnalysisTool(object):
         directions_style_param.filter.list = ["NA Desktop", "NA Navigation"]
         directions_style_param.value = "NA Desktop"
         parameters.append(directions_style_param)
+
+        #Save route data parameter
+        save_route_data_param = arcpy.Parameter("Save_Route_Data", "Save Route Data", "Input", "GPBoolean", "Optional")
+        save_route_data_param.category = "Output"
+        save_route_data_param.filter.list = ["SAVE_ROUTE_DATA", "NO_SAVE_ROUTE_DATA"]
+        save_route_data_param.value = "NO_SAVE_ROUTE_DATA"
+        parameters.append(save_route_data_param)
+
+        #Output route data parameter
+        output_route_data_param = arcpy.Parameter("Output_Route_Data", "Output Route Data", "Output", "DEFile",
+                                                  "Derived")
+        parameters.append(output_route_data_param)
 
         return {param.name : param for param in parameters}
 
@@ -834,6 +902,8 @@ class NetworkAnalysisService(object):
         "maximumFacilities": "Maximum_Facilities", 
         "maximumFacilitiesToFind": "Maximum_Facilities_to_Find",
         "maximumIncidents": "Maximum_Incidents",
+        "maximumOrigins" : "Maximum_Origins",
+        "maximumDestinations" : "Maximum_Destinations",
         "maximumDemandPoints": "Maximum_Demand_Points",
         "maximumNumberOfBreaks": "Maximum_Number_of_Breaks",
         "maximumBreakTimeValue": "Maximum_Break_Time_Value",
@@ -850,6 +920,7 @@ class NetworkAnalysisService(object):
         "asyncServiceArea": ["GenerateServiceAreas"],
         "asyncVRP": ["SolveVehicleRoutingProblem"],
         "syncVRP": ["EditVehicleRoutingProblem"],
+        "asyncODCostMatrix" : ["GenerateOriginDestinationCostMatrix"],
     }
 
 
@@ -885,11 +956,14 @@ class NetworkAnalysisService(object):
         self.attributeParameterValues = kwargs.get("Attribute_Parameter_Values", None)
         self.travelMode = kwargs.get("Travel_Mode", None)
         self.impedance = kwargs.get("Impedance", None)
+        self.saveLayerFile = kwargs.get("Save_Output_Network_Analysis_Layer", None)
+        self.overrides = kwargs.get("Overrides", None)
         self.serviceCapabilities = kwargs.get("Service_Capabilities", None)
 
         #Derived outputs
         self.outputGeodatabase = kwargs.get("Output_Geodatabase", "in_memory")
         self.solveSucceeded = False
+        self.outputLayer = ""
 
         #Other instance attributes
         self.toolResult = None
@@ -939,7 +1013,7 @@ class NetworkAnalysisService(object):
             if value and value_units:
                 if value_units.lower() != nds_attribute_units.lower():
                     value = nau.convert_units(value, value_units, nds_attribute_units)
-                    service_limits[value_limit_name] = locale.atof(value)
+                    service_limits[value_limit_name] = str_to_float(value)
         
         service_limits = self.toolInfoJSON["serviceLimits"][self.HELPER_SERVICES_KEY][tool_name]
         
@@ -1295,6 +1369,7 @@ class NetworkAnalysisService(object):
         self.portalTravelMode = None
         self.customTravelModeDistanceAttribute = ""
         self.customTravelModeTimeAttribute = ""
+        self.customTravelModeImpedanceAttribute = ""
         self.walkingRestriction = ""
         
         #Create a mapping of cost attributes from the network dataset and the values of impedance parameter
@@ -1343,8 +1418,10 @@ class NetworkAnalysisService(object):
         self.walkingRestriction = self.parser.get(self.templateNDS, "walking_restriction")
         trucking_restriction = self.parser.get(self.templateNDS, "trucking_restriction")
         is_custom_travel_mode_impedance_time_based = False
+        self.customTravelModeImpedanceAttribute = self.customTravelModeDistanceAttribute
         if self.impedance != "Travel Distance":
             self.customTravelModeTimeAttribute = impedance_parameter_mappings[self.impedance]
+            self.customTravelModeImpedanceAttribute = self.customTravelModeTimeAttribute
             is_custom_travel_mode_impedance_time_based = True
 
         ##Check for failure conditions when using custom travel modes
@@ -1393,13 +1470,13 @@ class NetworkAnalysisService(object):
                                int(self.MAX_WALKING_MODE_DISTANCE_MILES / self.METER_TO_MILES / 1000))
             raise InputError
     
-    def _checkMaxOutputFeatures(self, analysis_output):
+    def _checkMaxOutputFeatures(self, analysis_output, error_message_code=30142):
         '''Check if the count of output features exceeds the maximum number of records that can be successfully 
         returned by the service'''
 
         output_features_count = int(arcpy.management.GetCount(analysis_output).getOutput(0))
         if output_features_count > self.maxFeatures:
-            arcpy.AddIDMessage("ERROR", 30142, output_features_count, self.maxFeatures)
+            arcpy.AddIDMessage("ERROR", error_message_code, output_features_count, self.maxFeatures)
             raise arcpy.ExecuteError
 
     def  _logToolExecutionMessages(self):
@@ -1519,16 +1596,18 @@ class FindRoutes(NetworkAnalysisService):
         self.orderingType = kwargs.get("Preserve_Terminal_Stops", None)
         self.returnToStart = kwargs.get("Return_to_Start", None)
         self.useTimeWindows = kwargs.get("Use_Time_Windows", None)
+        self.timeZoneForTimeWindows = kwargs.get("Time_Zone_for_Time_Windows", None)
         self.routeShape = kwargs.get("Route_Shape", None)
         self.routeLineSimplicationTolerance = kwargs.get("Route_Line_Simplification_Tolerance", None)
         #Set simplification tolerance to None if value is 0
-        if locale.atof(self.routeLineSimplicationTolerance.split(" ")[0]) == 0:
+        if str_to_float(self.routeLineSimplicationTolerance.split(" ")[0]) == 0:
             self.routeLineSimplicationTolerance = None
         self.populateRouteEdges = kwargs.get("Populate_Route_Edges", None)
         self.populateDirections = kwargs.get("Populate_Directions", None)
         self.directionsLanguage = kwargs.get("Directions_Language", None)
         self.directionsDistanceUnits = kwargs.get("Directions_Distance_Units", None)
         self.directionsStyleName = kwargs.get("Directions_Style_Name", None)
+        self.saveRouteData = kwargs.get("Save_Route_Data", None)
 
         #Print tool parameter values for debugging
         if self.logger.DEBUG:
@@ -1540,6 +1619,7 @@ class FindRoutes(NetworkAnalysisService):
         self.outputRouteEdges = os.path.join(self.outputGeodatabase, self.OUTPUT_ROUTE_EDGES_NAME)
         self.outputDirections = os.path.join(self.outputGeodatabase, self.OUTPUT_DIRECTIONS_NAME)
         self.outputStops = os.path.join(self.outputGeodatabase, self.OUTPUT_STOPS_NAME)
+        self.outputRouteData = ""
         
     def execute(self):
         '''Main execution logic'''
@@ -1558,7 +1638,6 @@ class FindRoutes(NetworkAnalysisService):
 
             #Define values for big button tool parameters that are not specified from the service
             constant_params = [('Maximum_Snap_Tolerance', '20 Kilometers'),
-                               ('Save_Output_Network_Analysis_Layer', True if self.logger.DEBUG else False),
                                ('Accumulate_Attributes', []),
                                ('Output_Geodatabase', self.outputGeodatabase),
                                ('Output_Routes_Name', self.OUTPUT_ROUTES_NAME),
@@ -1574,6 +1653,7 @@ class FindRoutes(NetworkAnalysisService):
                                ('Preserve_Terminal_Stops', self.ORDERING_KEYWORDS[self.orderingType]),
                                ('Return_to_Start', self.returnToStart),
                                ('Use_Time_Windows', self.useTimeWindows),
+                               ('Time_Zone_for_Time_Windows', self.TIME_ZONE_USAGE_KEYWORDS[self.timeZoneForTimeWindows]),
                                ('Use_Hierarchy_in_Analysis', self.useHierarchy),
                                ('Time_of_Day', self.timeOfDay),
                                ('Time_Zone_for_Time_of_Day', self.TIME_ZONE_USAGE_KEYWORDS[self.timeZoneUsage]),
@@ -1590,7 +1670,10 @@ class FindRoutes(NetworkAnalysisService):
                                ('Directions_Language', self.directionsLanguage),
                                ('Directions_Distance_Units', self.directionsDistanceUnits),
                                ('Directions_Style_Name', self.directionsStyleName),
-                               ('Travel_Mode', self.portalTravelMode)
+                               ('Travel_Mode', self.portalTravelMode),
+                               ('Save_Output_Network_Analysis_Layer', self.saveLayerFile),
+                               ('Overrides', self.overrides),
+                               ('Save_Route_Data', self.saveRouteData),
                                ]
    
             #Fail if no stops are given
@@ -1616,7 +1699,8 @@ class FindRoutes(NetworkAnalysisService):
                                self.polygonBarriers, self.useHierarchy, "#", self.attributeParameterValues,
                                self.routeShape, self.routeLineSimplicationTolerance, self.populateRouteEdges,
                                self.populateDirections, self.directionsLanguage, self.directionsDistanceUnits,
-                               self.directionsStyleName, self.portalTravelMode, self.impedance]
+                               self.directionsStyleName, self.portalTravelMode, self.impedance,
+                               self.timeZoneForTimeWindows, self.saveLayerFile, self.overrides, self.saveRouteData]
 
                 #remove any unsupported restriction parameters when using a custom travel mode
                 if self.isCustomTravelMode:
@@ -1640,7 +1724,8 @@ class FindRoutes(NetworkAnalysisService):
                     arcpy.management.CopyFeatures(self.toolResult.getOutput(2), self.outputRouteEdges)
                     arcpy.management.CopyFeatures(self.toolResult.getOutput(3), self.outputDirections)
                     arcpy.management.CopyFeatures(self.toolResult.getOutput(4), self.outputStops)
-            
+                    self.outputLayer = self.toolResult.getOutput(5)
+                    self.outputRouteData = self.toolResult.getOutput(6)
             else:
         
                 #Add the network dataset that we wish to use.    
@@ -1670,6 +1755,8 @@ class FindRoutes(NetworkAnalysisService):
                 self.outputRouteEdges = self.toolResult.getOutput(2)
                 self.outputDirections = self.toolResult.getOutput(3)
                 self.outputStops = self.toolResult.getOutput(4)
+                self.outputLayer = self.toolResult.getOutput(5)
+                self.outputRouteData = self.toolResult.getOutput(6)
     
             #Fail if the count of features in route edges or directions exceeds the maximum number of records
             #returned by the service
@@ -1678,7 +1765,7 @@ class FindRoutes(NetworkAnalysisService):
                 #Generalize the directions features
                 arcpy.edit.Generalize(self.outputDirections, self.routeLineSimplicationTolerance)
             if self.populateRouteEdges:
-                self._checkMaxOutputFeatures(self.outputRouteEdges)
+                self._checkMaxOutputFeatures(self.outputRouteEdges, 30143)
                 #Generalize the route edges
                 arcpy.edit.Generalize(self.outputRouteEdges, self.routeLineSimplicationTolerance)
             
@@ -1743,7 +1830,7 @@ class FindClosestFacilities(NetworkAnalysisService):
         self.cutoff = kwargs.get("Cutoff", None)
         if self.cutoff:
             try:
-                self.cutoff = locale.atof(self.cutoff)
+                self.cutoff = str_to_float(self.cutoff)
             except ValueError as ex:
                 self.cutoff = None
 
@@ -1752,12 +1839,13 @@ class FindClosestFacilities(NetworkAnalysisService):
         self.routeShape = kwargs.get("Route_Shape", None)
         self.routeLineSimplicationTolerance = kwargs.get("Route_Line_Simplification_Tolerance", None)
         #Set simplification tolerance to None if value is 0
-        if locale.atof(self.routeLineSimplicationTolerance.split(" ")[0]) == 0:
+        if str_to_float(self.routeLineSimplicationTolerance.split(" ")[0]) == 0:
             self.routeLineSimplicationTolerance = None
         self.populateDirections = kwargs.get("Populate_Directions", None)
         self.directionsLanguage = kwargs.get("Directions_Language", None)
         self.directionsDistanceUnits = kwargs.get("Directions_Distance_Units", None)
         self.directionsStyleName = kwargs.get("Directions_Style_Name", None)
+        self.saveRouteData = kwargs.get("Save_Route_Data", None)
 
         #Print tool parameter values for debugging
         if self.logger.DEBUG:
@@ -1768,6 +1856,7 @@ class FindClosestFacilities(NetworkAnalysisService):
         self.outputRoutes = os.path.join(self.outputGeodatabase, self.OUTPUT_ROUTES_NAME)
         self.outputDirections = os.path.join(self.outputGeodatabase, self.OUTPUT_DIRECTIONS_NAME)
         self.outputFacilities = os.path.join(self.outputGeodatabase, self.OUTPUT_FACILITIES_NAME)
+        self.outputRouteData = ""
 
     def execute(self):
         '''Main execution logic'''
@@ -1787,7 +1876,6 @@ class FindClosestFacilities(NetworkAnalysisService):
 
             #Define values for big button tool parameters that are not specified from the service
             constant_params = [('Maximum_Snap_Tolerance', '20 Kilometers'),
-                               ('Save_Output_Network_Analysis_Layer', True if self.logger.DEBUG else False),
                                ('Accumulate_Attributes', []),
                                ('Output_Geodatabase', self.outputGeodatabase),
                                ('Output_Routes_Name', self.OUTPUT_ROUTES_NAME),
@@ -1819,6 +1907,9 @@ class FindClosestFacilities(NetworkAnalysisService):
                                ('Directions_Distance_Units', self.directionsDistanceUnits),
                                ('Directions_Style_Name', self.directionsStyleName),
                                ('Travel_Mode', self.portalTravelMode),
+                               ('Save_Output_Network_Analysis_Layer', self.saveLayerFile),
+                               ('Overrides', self.overrides),
+                               ('Save_Route_Data', self.saveRouteData),
                                ]
 
            
@@ -1846,7 +1937,8 @@ class FindClosestFacilities(NetworkAnalysisService):
                                self.polygonBarriers, "#", self.attributeParameterValues, self.routeShape,
                                self.routeLineSimplicationTolerance, self.populateDirections, self.directionsLanguage,
                                self.directionsDistanceUnits, self.directionsStyleName, self.timeZoneUsage,
-                               self.portalTravelMode, self.impedance]
+                               self.portalTravelMode, self.impedance, self.saveLayerFile, self.overrides,
+                               self.saveRouteData]
 
                 #remove any unsupported restriction parameters when using a custom travel mode
                 if self.isCustomTravelMode:
@@ -1869,6 +1961,8 @@ class FindClosestFacilities(NetworkAnalysisService):
                     arcpy.management.CopyFeatures(self.toolResult.getOutput(0), self.outputRoutes)
                     arcpy.management.CopyFeatures(self.toolResult.getOutput(1), self.outputDirections)
                     arcpy.management.CopyFeatures(self.toolResult.getOutput(3), self.outputFacilities)
+                    self.outputLayer = self.toolResult.getOutput(4)
+                    self.outputRouteData = self.toolResult.getOutput(5) 
             
             else:
         
@@ -1898,6 +1992,8 @@ class FindClosestFacilities(NetworkAnalysisService):
                 self.outputRoutes = self.toolResult.getOutput(1)
                 self.outputDirections = self.toolResult.getOutput(2)
                 self.outputFacilities = self.toolResult.getOutput(3)
+                self.outputLayer = self.toolResult.getOutput(4)
+                self.outputRouteData = self.toolResult.getOutput(5)
     
             #Fail if the count of features in directions exceeds the maximum number of records returned by the service
             if self.populateDirections:
@@ -1963,11 +2059,11 @@ class GenerateServiceAreas(NetworkAnalysisService):
         self.trimDistance = kwargs.get("Polygon_Trim_Distance", None)
         self.simplificationTolerance = kwargs.get("Polygon_Simplification_Tolerance", None)
         #Set simplification tolerance to None if value is 0
-        if locale.atof(self.simplificationTolerance.split(" ")[0]) == 0:
+        if str_to_float(self.simplificationTolerance.split(" ")[0]) == 0:
             self.simplificationTolerance = None
         
         #outputs and derived outputs
-        self.outputServiceAreas = kwargs.get("service_areas", os.path.join("in_memory", "ServiceAreas"))
+        self.outputServiceAreas = kwargs.get("Service_Areas", os.path.join("in_memory", "ServiceAreas"))
 
         #Print tool parameter values for debugging
         if self.logger.DEBUG:
@@ -2008,8 +2104,7 @@ class GenerateServiceAreas(NetworkAnalysisService):
             constant_params = [
                 ('Maximum_Snap_Tolerance', '20 Kilometers'),
                 ('Exclude_Restricted_Portions_of_the_Network', 'EXCLUDE'),
-                ('Save_Output_Network_Analysis_Layer', True if self.logger.DEBUG else False)
-            ]
+                ]
 
             #Create a list of user defined parameter names and their values
             user_parameters = [
@@ -2033,6 +2128,8 @@ class GenerateServiceAreas(NetworkAnalysisService):
                 ('Restrictions', self.restrictions),
                 ('Attribute_Parameter_Values', self.attributeParameterValues),
                 ('Travel_Mode', self.portalTravelMode),
+                ('Save_Output_Network_Analysis_Layer', self.saveLayerFile),
+                ('Overrides', self.overrides)
             ]
           
             #Fail if no facilities are given
@@ -2052,7 +2149,7 @@ class GenerateServiceAreas(NetworkAnalysisService):
                 break_value_list = [val.encode("utf-8") for val in self.breakValues.strip().split()]
                 #Check if all the break value are numeric
                 try:
-                    end_break_value = max([locale.atof(val) for val in break_value_list])
+                    end_break_value = max([str_to_float(val) for val in break_value_list])
                 except ValueError:
                     arcpy.AddIDMessage("ERROR", 30118)
                     raise InputError
@@ -2064,7 +2161,7 @@ class GenerateServiceAreas(NetworkAnalysisService):
                     impedance_unit = self.parser.get(self.templateNDS, "distance_attribute_units")
                     is_impedance_time_based = False
                 converted_break_value_list = nau.convert_units(break_value_list, self.measurementUnits, impedance_unit)
-                convereted_end_break_value = max([locale.atof(val) for val in converted_break_value_list])
+                convereted_end_break_value = max([str_to_float(val) for val in converted_break_value_list])
                 if is_impedance_time_based:
                     if max_break_time_detailed_polys and (convereted_end_break_value > max_break_time_detailed_polys):
                         conv_max_break_time_detailed_polys = nau.convert_units(max_break_time_detailed_polys,
@@ -2096,7 +2193,7 @@ class GenerateServiceAreas(NetworkAnalysisService):
                                self.overlapType, self.detailedPolygons, self.trimDistance,
                                self.simplificationTolerance, self.pointBarriers, self.lineBarriers,
                                self.polygonBarriers, "#", self.attributeParameterValues, self.timeZoneUsage,
-                               self.portalTravelMode, self.impedance]
+                               self.portalTravelMode, self.impedance, self.saveLayerFile, self.overrides]
         
                 #remove any unsupported restriction parameters
                 if self.isCustomTravelMode:
@@ -2115,6 +2212,7 @@ class GenerateServiceAreas(NetworkAnalysisService):
                     #Save the results
                     self.solveSucceeded = True
                     arcpy.management.CopyFeatures(self.toolResult.getOutput(0), self.outputServiceAreas)
+                    self.outputLayer = self.toolResult.getOutput(2)
         
             else:
                 #Add the network dataset that we wish to use.    
@@ -2131,20 +2229,13 @@ class GenerateServiceAreas(NetworkAnalysisService):
                 if self.isCustomTravelMode:
                     tool_parameters["Time_Attribute"] = self.customTravelModeTimeAttribute
                     tool_parameters["Distance_Attribute"] = self.customTravelModeDistanceAttribute
-                else:
-                    #Update distance based throtlling parameters to Kilometers if NDS is not North America
-                    #This is done as new ESMP datasets use Kilometers as distance attribute in all the travel modes 
-                    if self.parser.get(self.templateNDS, "distance_attribute") != self.travelModeObject.distanceAttributeName:
-                        for param_name in ("Maximum_Break_Distance_Value", "Force_Hierarchy_beyond_Break_Distance_Value"):
-                            if tool_parameters[param_name]:
-                                tool_parameters[param_name] = tool_parameters[param_name] * self.MILES_TO_KM 
-            
+ 
                 #Call the big button tool
                 self._executeBigButtonTool(tool_parameters)
     
             #Fail if the count of features in output service areas exceeds the maximum number of records returned by 
             #the service
-            self._checkMaxOutputFeatures(self.outputServiceAreas) 
+            self._checkMaxOutputFeatures(self.outputServiceAreas, 30144) 
     
             if self.logger.DEBUG:
                 #print the execution time for the main tool
@@ -2165,6 +2256,9 @@ class GenerateServiceAreas(NetworkAnalysisService):
                 self.logger.warning(self.toolResult.getMessages(1))
                 self.logger.error(self.toolResult.getMessages(2))
                 raise arcpy.ExecuteError
+
+            #Get the layer file
+            self.outputLayer = self.toolResult.getOutput(2)
     
             #Add metering and royalty messages
             #numObjects = number of valid facilities * number of breaks
@@ -2209,6 +2303,7 @@ class SolveVehicleRoutingProblem(NetworkAnalysisService):
         self.routes = kwargs.get("Routes", None)
         self.breaks = kwargs.get("Breaks", None)
         self.timeUnits = kwargs.get("Time_Units", None)
+        self.timeZoneUsageForTimeFields = kwargs.get("Time_Zone_Usage_for_Time_Fields", None)
         self.distanceUnits = kwargs.get("Distance_Units", None)
         self.timeWindowFactor = kwargs.get("Time_Window_Factor", None)
         self.spatiallyClusterRoutes = kwargs.get("Spatially_Cluster_Routes", None)
@@ -2219,11 +2314,12 @@ class SolveVehicleRoutingProblem(NetworkAnalysisService):
         self.populateRouteLines = kwargs.get("Populate_Route_Lines", None)
         self.routeLineSimplicationTolerance = kwargs.get("Route_Line_Simplification_Tolerance", None)
         #Set simplification tolerance to None if value is 0
-        if locale.atof(self.routeLineSimplicationTolerance.split(" ")[0]) == 0:
+        if str_to_float(self.routeLineSimplicationTolerance.split(" ")[0]) == 0:
             self.routeLineSimplicationTolerance = None
         self.populateDirections = kwargs.get("Populate_Directions", None)
         self.directionsLanguage = kwargs.get("Directions_Language", None)
         self.directionsStyleName = kwargs.get("Directions_Style_Name", None)
+        self.saveRouteData = kwargs.get("Save_Route_Data", None)
 
         #Print tool parameter values for debugging
         if self.logger.DEBUG:
@@ -2236,6 +2332,7 @@ class SolveVehicleRoutingProblem(NetworkAnalysisService):
         self.outputStops = os.path.join(self.outputGeodatabase, self.OUTPUT_STOPS_NAME)
         self.outputRoutes = os.path.join(self.outputGeodatabase, self.OUTPUT_ROUTES_NAME)
         self.outputDirections = os.path.join(self.outputGeodatabase, self.OUTPUT_DIRECTIONS_NAME)
+        self.outputRouteData = ""
         
     def execute(self):
         '''Main execution logic'''
@@ -2262,7 +2359,7 @@ class SolveVehicleRoutingProblem(NetworkAnalysisService):
                 ('output_directions_name', self.OUTPUT_DIRECTIONS_NAME),
                 ('maximum_snap_tolerance', "20 Kilometers"),
                 ('exclude_restricted_portions_of_the_network', "EXCLUDE"),
-                ('save_output_layer', True if self.logger.DEBUG else False),
+                ('ignore_network_location_fields', "IGNORE"),
             ]
 
             #Create a list of user defined parameter names and their values
@@ -2293,6 +2390,10 @@ class SolveVehicleRoutingProblem(NetworkAnalysisService):
                 ('populate_directions', self.populateDirections),
                 ('directions_language', self.directionsLanguage),
                 ('directions_style_name', self.directionsStyleName),
+                ('time_zone_usage_for_time_fields', self.timeZoneUsageForTimeFields),
+                ('save_output_layer', self.saveLayerFile),
+                ('overrides', self.overrides),
+                ('save_route_data', self.saveRouteData),
                 ('service_capabilities', service_limits),                 
             ]
 
@@ -2320,7 +2421,8 @@ class SolveVehicleRoutingProblem(NetworkAnalysisService):
                                self.excessTransitFactor, self.pointBarriers, self.lineBarriers, self.polygonBarriers,
                                self.useHierarchy, "#", self.attributeParameterValues, self.populateRouteLines,
                                self.routeLineSimplicationTolerance, self.populateDirections, self.directionsLanguage,
-                               self.directionsStyleName, self.portalTravelMode, self.impedance]
+                               self.directionsStyleName, self.portalTravelMode, self.impedance,
+                               self.timeZoneUsageForTimeFields, self.saveLayerFile, self.overrides, self.saveRouteData]
                 #remove any unsupported restriction parameters
                 if self.isCustomTravelMode:
                     remote_tool_param_info = arcpy.GetParameterInfo(remote_tool_name)
@@ -2342,6 +2444,8 @@ class SolveVehicleRoutingProblem(NetworkAnalysisService):
                     arcpy.management.CopyRows(self.toolResult.getOutput(1), self.outputStops)
                     arcpy.management.CopyFeatures(self.toolResult.getOutput(2), self.outputRoutes)
                     arcpy.management.CopyFeatures(self.toolResult.getOutput(3), self.outputDirections)
+                    self.outputLayer = self.toolResult.getOutput(5)
+                    self.outputRouteData = self.toolResult.getOutput(6)
             else:
         
                 #Add the network dataset that we wish to use.   
@@ -2370,6 +2474,8 @@ class SolveVehicleRoutingProblem(NetworkAnalysisService):
                 self.outputStops = self.toolResult.getOutput(2)
                 self.outputRoutes = self.toolResult.getOutput(3)
                 self.outputDirections = self.toolResult.getOutput(4)
+                self.outputLayer = self.toolResult.getOutput(5)
+                self.outputRouteData = self.toolResult.getOutput(6)
     
             #Fail if the count of features in directions exceeds the maximum number of records
             #returned by the service
@@ -2452,7 +2558,7 @@ class SolveLocationAllocation(NetworkAnalysisService):
         self.deafultMeasurementCutoff = kwargs.get("Default_Measurement_Cutoff", None)
         if self.deafultMeasurementCutoff:
             try:
-                self.deafultMeasurementCutoff = locale.atof(self.deafultMeasurementCutoff)
+                self.deafultMeasurementCutoff = str_to_float(self.deafultMeasurementCutoff)
             except ValueError as ex:
                 self.deafultMeasurementCutoff = None
 
@@ -2490,7 +2596,6 @@ class SolveLocationAllocation(NetworkAnalysisService):
 
             #Define values for big button tool parameters that are not specified from the service
             constant_params = [('Maximum_Snap_Tolerance', '20 Kilometers'),
-                               ('Save_Output_Network_Analysis_Layer', True if self.logger.DEBUG else False),
                                ('Accumulate_Attributes', []),
                                ('Output_Geodatabase', self.outputGeodatabase),
                                ('Output_Allocation_Lines_Name', self.OUTPUT_ALLOCATION_LINES_NAME),
@@ -2522,6 +2627,8 @@ class SolveLocationAllocation(NetworkAnalysisService):
                                ('Restrictions', self.restrictions),
                                ('Attribute_Parameter_Values', self.attributeParameterValues),
                                ('Travel_Mode', self.portalTravelMode),
+                               ('Save_Output_Network_Analysis_Layer', self.saveLayerFile),
+                               ('Overrides', self.overrides),
                                ]
    
             #Fail if no facilities or demand points are given
@@ -2548,7 +2655,8 @@ class SolveLocationAllocation(NetworkAnalysisService):
                                self.measurementTransformationFactor, self.travelDirection, self.timeOfDay,
                                self.timeZoneUsage, self.uTurnAtJunctions, self.pointBarriers, self.lineBarriers,
                                self.polygonBarriers, self.useHierarchy, "#", self.attributeParameterValues, 
-                               self.allocationLineShape, self.portalTravelMode, self.impedance]
+                               self.allocationLineShape, self.portalTravelMode, self.impedance, self.saveLayerFile,
+                               self.overrides]
 
                 #remove any unsupported restriction parameters when using a custom travel mode
                 if self.isCustomTravelMode:
@@ -2571,6 +2679,7 @@ class SolveLocationAllocation(NetworkAnalysisService):
                     arcpy.management.CopyFeatures(self.toolResult.getOutput(1), self.outputAllocationLines)
                     arcpy.management.CopyFeatures(self.toolResult.getOutput(2), self.outputFacilities)
                     arcpy.management.CopyFeatures(self.toolResult.getOutput(3), self.outputDemandPoints)
+                    self.outputLayer = self.toolResult.getOutput(4)
             
             else:
         
@@ -2600,13 +2709,14 @@ class SolveLocationAllocation(NetworkAnalysisService):
                 self.outputAllocationLines = self.toolResult.getOutput(1)
                 self.outputFacilities = self.toolResult.getOutput(2)
                 self.outputDemandPoints = self.toolResult.getOutput(3)
+                self.outputLayer = self.toolResult.getOutput(5)
                     
             #Log messages from execution of remote or big button tool
             self._logToolExecutionMessages()
             
             #Fail if the count of features in output demand points exceeds the maximum number of records returned by 
             #the service
-            self._checkMaxOutputFeatures(self.outputDemandPoints) 
+            self._checkMaxOutputFeatures(self.outputDemandPoints, 30170) 
 
             #Add metering and royalty messages
             #numObjects = number of allocated demand points
@@ -2618,6 +2728,226 @@ class SolveLocationAllocation(NetworkAnalysisService):
             if num_objects:
                 arcpy.gp._arc_object.LogUsageMetering(5555, self.__class__.__name__, num_objects)
                 arcpy.gp._arc_object.LogUsageMetering(9999, self.outputNDS, num_objects)
+
+        except InputError as ex:
+            self._handleInputErrorException(ex)
+        except arcpy.ExecuteError:
+            self._handleArcpyExecuteErrorException()
+        except Exception as ex:
+            self._handleException()
+
+        return
+
+class GenerateOriginDestinationCostMatrix(NetworkAnalysisService):
+    '''GenerateOriginDestinationCostMatrix geoprocessing service'''
+
+    OUTPUT_OD_LINES_NAME = "ODLines"
+    OUTPUT_ORIGINS_NAME = "Origins"
+    OUTPUT_DESTINATIONS_NAME = "Destinations"
+    EXTENT_FIELDS = NetworkAnalysisService.EXTENT_FIELDS[:]
+    EXTENT_FIELDS[2] = "GPOriginDestinationCostMatrixService"
+    REMOTE_TOOL_RESTRICTIONS_PARAM_INDEX = 15
+    
+    TOOL_NAME = "GenerateOriginDestinationCostMatrix_na"
+    HELPER_SERVICES_KEY = "asyncODCostMatrix"
+
+    def __init__(self, *args, **kwargs):
+        '''constructor'''
+
+        #Call the base class constructor to sets the common tool parameters as instance attributes
+        super(GenerateOriginDestinationCostMatrix, self).__init__(*args, **kwargs)
+
+        #Store tool parameters as instance attributes
+        self.origins = kwargs.get("Origins", None)
+        self.destinations = kwargs.get("Destinations", None)
+        self.timeUnits = kwargs.get("Time_Units", None)
+        self.distanceUnits = kwargs.get("Distance_Units", None)
+        self.destinationsToFind = kwargs.get("Number_of_Destinations_to_Find", None)
+        self.cutoff = kwargs.get("Cutoff", None)
+        if self.cutoff:
+            try:
+                self.cutoff = locale.atof(self.cutoff)
+            except ValueError as ex:
+                self.cutoff = None
+        self.odLineShape = kwargs.get("Origin_Destination_Line_Shape", None)
+
+        #Print tool parameter values for debugging
+        if self.logger.DEBUG:
+            for param in sorted(kwargs):
+                self.logger.debug(u"{0}: {1}".format(param, kwargs[param]))
+
+        #derived outputs
+        self.outputGeodatabase = arcpy.env.scratchGDB
+        self.outputODLines = os.path.join(self.outputGeodatabase, self.OUTPUT_OD_LINES_NAME)
+        self.outputOrigins = os.path.join(self.outputGeodatabase, self.OUTPUT_ORIGINS_NAME)
+        self.outputDestinations = os.path.join(self.outputGeodatabase, self.OUTPUT_DESTINATIONS_NAME)
+
+    def execute(self):
+        '''Main execution logic'''
+        try:
+            arcpy.CheckOutExtension("network")
+
+            #Get the properties for all network datasets from a propeties file. 
+            self._getNetworkDatasetProperties()
+
+            #Select the travel mode
+            self._selectTravelMode()
+
+            #Get the values for big button tool parameters that are used as constraints
+            service_limits = self._getServiceCapabilities()
+            self.logger.debug("Service Limits: {0}".format(service_limits))
+
+            #Define values for big button tool parameters that are not specified from the service
+            constant_params = [('Maximum_Snap_Tolerance', '20 Kilometers'),
+                               ('Accumulate_Attributes', []),
+                               ('Output_Geodatabase', self.outputGeodatabase),
+                               ('Output_Origin_Destination_Lines_Name', self.OUTPUT_OD_LINES_NAME),
+                               ('Output_Origins_Name', self.OUTPUT_ORIGINS_NAME),
+                               ('Output_Destinations_Name', self.OUTPUT_DESTINATIONS_NAME),
+                               ]
+
+            #Create a list of user defined parameter names and their values
+            user_parameters = [('Origins', self.origins),
+                               ('Destinations', self.destinations),
+                               ('Travel_Mode', self.portalTravelMode),
+                               ('Time_Units', self.timeUnits),
+                               ('Distance_Units', self.distanceUnits),
+                               ('Number_of_Destinations_to_Find', self.destinationsToFind),
+                               ('Cutoff', self.cutoff),
+                               ('Time_of_Day', self.timeOfDay),
+                               ('Time_Zone_for_Time_of_Day', self.TIME_ZONE_USAGE_KEYWORDS[self.timeZoneUsage]),
+                               ('UTurn_Policy', self.UTURN_KEYWORDS[self.uTurnAtJunctions]),
+                               ('Origin_Destination_Line_Shape', self.ROUTE_SHAPE_KEYWORDS[self.odLineShape]),
+                               ('Point_Barriers', self.pointBarriers),
+                               ('Line_Barriers', self.lineBarriers),
+                               ('Polygon_Barriers', self.polygonBarriers),
+                               ('Use_Hierarchy_in_Analysis', self.useHierarchy),
+                               ('Restrictions', self.restrictions),
+                               ('Attribute_Parameter_Values', self.attributeParameterValues),
+                               ('Save_Output_Network_Analysis_Layer', self.saveLayerFile),
+                               ('Overrides', self.overrides),
+                               ]
+   
+            #Fail if no origins or destinations are given
+            origin_count = int(arcpy.management.GetCount(self.origins).getOutput(0))
+            destination_count = int(arcpy.management.GetCount(self.destinations).getOutput(0))
+            if origin_count == 0 or destination_count == 0:
+                arcpy.AddIDMessage("ERROR", 30168)
+                raise InputError
+
+            #Determine the network dataset to use. If analysis region is specified use that as
+            #the network dataset layer name
+            self._selectNetworkDataset(self.origins, self.destinations)
+
+            if self.connectionFile:
+                #Add remote tool
+                self.logger.debug(u"Adding remote service {0} from {1}".format(self.serviceName, self.connectionFile))
+                remote_tool_name, remote_toolbox = add_remote_toolbox(self.connectionFile, self.serviceName)
+
+                #specify parameter values for the remote tool
+                #need to pass boolean values for boolean parameters when calling the remote service
+                task_params = [self.origins, self.destinations, self.portalTravelMode, self.timeUnits,
+                               self.distanceUnits, "#", self.destinationsToFind, self.cutoff, self.timeOfDay,
+                               self.timeZoneUsage, self.pointBarriers, self.lineBarriers, self.polygonBarriers,
+                               self.uTurnAtJunctions, self.useHierarchy, "#", self.attributeParameterValues, 
+                               self.impedance, self.odLineShape, self.saveLayerFile, self.overrides]
+
+                #remove any unsupported restriction parameters when using a custom travel mode
+                if self.isCustomTravelMode:
+                    remote_tool_param_info = arcpy.GetParameterInfo(remote_tool_name)
+                    remote_tool_restriction_param = remote_tool_param_info[self.REMOTE_TOOL_RESTRICTIONS_PARAM_INDEX]
+                    task_params[self.REMOTE_TOOL_RESTRICTIONS_PARAM_INDEX] = get_valid_restrictions_remote_tool(remote_tool_restriction_param,
+                                                                                                                self.restrictions)
+                #execute the remote tool
+                self.toolResult = execute_remote_tool(remote_toolbox, remote_tool_name, task_params)
+
+                #report errors and exit in case the remote tool failed.
+                if self.toolResult.maxSeverity == 2:
+                    error_messages = self.toolResult.getMessages(1) + self.toolResult.getMessages(2)
+                    raise InputError(error_messages)
+                else:
+                    #Save the results
+                    solve_status = self.toolResult.getOutput(0)
+                    if solve_status.lower() == 'true':
+                        self.solveSucceeded = True
+                    arcpy.management.CopyFeatures(self.toolResult.getOutput(1), self.outputODLines)
+                    arcpy.management.CopyFeatures(self.toolResult.getOutput(2), self.outputOrigins)
+                    arcpy.management.CopyFeatures(self.toolResult.getOutput(3), self.outputDestinations)
+                    self.outputLayer = self.toolResult.getOutput(4)
+            
+            else:
+        
+                #Add the network dataset that we wish to use.    
+                user_parameters.append(("Network_Dataset", self.outputNDS))
+        
+                #Get the time attribute, distance attribute and feature locator where clause from config file
+                nds_property_values = self._getToolParametersFromNDSProperties()
+        
+                #Create a dict that contains all the tool parameters and call the tool.
+                tool_parameters = dict(nds_property_values + constant_params + user_parameters)
+                tool_parameters.update(service_limits)
+                #Update time attribute and distance attribute when using custom travel mode.
+                if self.isCustomTravelMode:
+                    tool_parameters["Time_Attribute"] = self.customTravelModeTimeAttribute
+                    tool_parameters["Distance_Attribute"] = self.customTravelModeDistanceAttribute
+                    tool_parameters["Impedance_Attribute"] = self.customTravelModeImpedanceAttribute
+
+                #enforce walking travel mode extent constraint
+                self._checkWalkingExtent(self.origins, self.destinations)
+
+                #Call the big button tool
+                self._executeBigButtonTool(tool_parameters)
+                
+                #get outputs from the result
+                solve_status = self.toolResult.getOutput(0)
+                if solve_status.lower() == 'true':
+                    self.solveSucceeded = True
+                self.outputODLines = self.toolResult.getOutput(1)
+                self.outputOrigins = self.toolResult.getOutput(2)
+                self.outputDestinations = self.toolResult.getOutput(3)
+                self.outputLayer = self.toolResult.getOutput(4)
+                    
+            #Log messages from execution of remote or big button tool
+            self._logToolExecutionMessages()
+            
+            #Fail if the count of features in output od lines exceeds the maximum number of records returned by 
+            #the service
+            self._checkMaxOutputFeatures(self.outputODLines, 30171) 
+
+            #Add metering and royalty messages
+            #numObjects = number of origins located on network * number of destinations located on network
+            #Get the counts of unlocated origins from excluded origins 
+            output_origins_layer = "OutputOriginsLayer"
+            unlocated_where_clause = "Status NOT IN (0,5)"
+            arcpy.management.MakeFeatureLayer(self.outputOrigins, output_origins_layer, unlocated_where_clause)
+            unlocated_origin_count = int(arcpy.management.GetCount(output_origins_layer).getOutput(0))
+            #Get the counts of unlocated destinations from excluded destinations
+            output_destinations_layer = "OutputDestinationsLayer"
+            arcpy.management.MakeFeatureLayer(self.outputDestinations, output_destinations_layer, 
+                                              unlocated_where_clause)
+            unlocated_destination_count = int(arcpy.management.GetCount(output_destinations_layer).getOutput(0))
+
+            #Calculate numObjects 
+            num_objects = (origin_count - unlocated_origin_count) * (destination_count - unlocated_destination_count)
+            
+            #Get usage parameters to report
+            odlines_count = int(arcpy.management.GetCount(self.outputODLines).getOutput(0))
+            origins_extent = arcpy.Describe(self.origins).extent
+            destinations_extent = arcpy.Describe(self.destinations).extent            
+            if num_objects:
+                task_name = self.__class__.__name__
+                usage_metrics = {
+                    "originCount" : origin_count,
+                    "originExtent" : json.loads(origins_extent.JSON),
+                    "destinationCount" : destination_count,
+                    "destinationExtent" : json.loads(destinations_extent.JSON),
+                    "destinationsToFind" : self.destinationsToFind,
+                    "cutoff" : self.cutoff,
+                    "odLinesCount" : odlines_count,
+                }
+                arcpy.gp._arc_object.LogUsageMetering(5555, task_name , num_objects)
+                arcpy.gp._arc_object.LogUsageMetering(9999, self.outputNDS, num_objects)
+                arcpy.gp._arc_object.LogUsageMetering(7777, task_name + json.dumps(usage_metrics), num_objects)
 
         except InputError as ex:
             self._handleInputErrorException(ex)
@@ -2651,7 +2981,7 @@ class Utilities(object):
 class GetTravelModes(Utilities):
     '''GetTravelModes tool in the Utilities geoprocessing service'''
 
-    FILE_TYPES = ["Default Localized Travel Modes File", "Default Travel Modes File", "Portal Properties File"]
+    FILE_TYPES = ["Default Localized Travel Modes File", "Default Travel Modes File"]
 
     def __init__(self, *args, **kwargs):
         '''Constructor'''
@@ -2719,7 +3049,6 @@ class GetTravelModes(Utilities):
             #Determine the file types that have been specified as supporting files
             default_localized_travel_modes_file = self.supportingFiles.get(self.FILE_TYPES[0], None)
             default_travel_modes_file = self.supportingFiles.get(self.FILE_TYPES[1], None)
-            properties_file = self.supportingFiles.get(self.FILE_TYPES[2], None)
             
             #declare names used in this method
             org_id = ""
@@ -2738,15 +3067,6 @@ class GetTravelModes(Utilities):
                 self.logger.error(u"A value for {0} file type must be specified".format(self.FILE_TYPES[1]))
                 raise InputError
 
-            #If the Portal Properties File that contains the portal secret key required to make sharing API calls from a 
-            #federated server is not specified, return the default travel modes from the network dataset
-            if properties_file and os.path.exists(properties_file):
-                with open(properties_file, "r") as pfp:
-                    portal_secret_key = json.load(pfp)
-            else:
-                self._createOutputTable(nds_travel_modes)
-                return
-
             #Get the owning system URL for the server hosting the service
             rest_info = get_rest_info()
             #A server that is not federated with a portal will not have owning system url. Return network dataset
@@ -2760,15 +3080,11 @@ class GetTravelModes(Utilities):
             #Make sure the owning system URL is using https
             if not owning_system_url.startswith("https"):
                 owning_system_url = owning_system_url.replace("http", "https")
-            #Get the token and referer used to call the service
-            gp_server_request_props = json.loads(arcpy.gp._arc_object.serverrequestproperties())
-            token = gp_server_request_props.get("token", "")
-            referer = gp_server_request_props.get("referer", "")     
-            common_query_params = {"token" : token, "f" : "json"}
+            
+            #Get the portal self
+            hgp = init_hostedgp()
+            portal_self_response = get_portal_self(hgp)
 
-            #Get the orgId based on the provided token
-            portal_self_response = make_http_request(owning_system_url + "/sharing/portals/self", common_query_params,
-                                                     "gzip", referer, portal_secret_key)
             if "id" in portal_self_response:
                 #OAuth and non-OAuth based user logins should have id property in portal self response
                 org_id = portal_self_response.get("id", "")
@@ -2783,13 +3099,8 @@ class GetTravelModes(Utilities):
                 #This block should be executed only when app logins are used
                 app_info = portal_self_response["appInfo"] 
                 org_id = app_info.get("orgId", "")
-                #Get the culture from the user who owns the app
-                app_owner = app_info.get("appOwner", "")
-                if app_owner:
-                    user_self_url = owning_system_url + "/sharing/community/users/{0}".format(app_owner)
-                    user_self_response =  make_http_request(user_self_url, common_query_params, "gzip", referer,
-                                                            portal_secret_key)
-                    culture = user_self_response.get("culture","en")
+                #If appInfo does not have a culture, use default en culture
+                culture = app_info.get("culture", "en")
 
             #If for some reason we get a null culture, use en
             if not culture:
@@ -2808,11 +3119,14 @@ class GetTravelModes(Utilities):
             #Get all the travel mode keys defined for the org
             #Get a file resource with key travelmodes.json. If the resource exists return all travel modes from the resource
             #Otherwise return default travel modes.
-            travel_modes_resource_url = owning_system_url + "/sharing/portals/{0}/resources/{1}".format(org_id,
-                                                                                                        "travelmodes.json")
-            travel_modes_resource_response = make_http_request(travel_modes_resource_url, common_query_params, "gzip",
-                                                               referer, portal_secret_key)
-            if "error" in travel_modes_resource_response:
+            try:
+                org_travel_modes_file = os.path.join(arcpy.env.scratchFolder, "travelmodes.json")
+                hgp.GetResourceAsFile("travelmodes.json", org_travel_modes_file)
+                with open(org_travel_modes_file, "rb") as org_tm_fp:
+                    travel_modes_resource_response = json.load(org_tm_fp)
+                self._createOutputTable(travel_modes_resource_response)
+                return
+            except Exception as ex:
                 #Return network dataset travel modes with localizations if present
                 #Get the localized travel mode names and descriptions
                 if default_localized_travel_modes_file and os.path.exists(default_localized_travel_modes_file):
@@ -2827,10 +3141,6 @@ class GetTravelModes(Utilities):
                         alt_travel_mode_names[travel_mode_id] = travel_mode.get("name", "")
                         travel_mode.update(localized_travel_modes[travel_mode_id])
                 self._createOutputTable(nds_travel_modes, alt_travel_mode_names)
-                return
-            else:
-                #Return org specific travel modes
-                self._createOutputTable(travel_modes_resource_response)
                 return
         except Exception as ex:
             self._handleExceptionError(ex)

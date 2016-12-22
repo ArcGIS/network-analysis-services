@@ -25,7 +25,8 @@ class Toolbox(object):
 
         # List of tool classes associated with this toolbox
         self.tools = [FindRoutes, GenerateServiceAreas, SolveVehicleRoutingProblem, EditVehicleRoutingProblem,
-                      FindClosestFacilities, SolveLocationAllocation, GetTravelModes, GetToolInfo]
+                      FindClosestFacilities, SolveLocationAllocation, GenerateOriginDestinationCostMatrix,
+                      GetTravelModes, GetToolInfo]
          
 class FindRoutes(nas.NetworkAnalysisTool):
     '''FindRoutes tool in Route service.'''
@@ -95,6 +96,13 @@ class FindRoutes(nas.NetworkAnalysisTool):
         use_time_windows_param.filter.list = ["USE_TIMEWINDOWS", "NO_TIMEWINDOWS"]
         use_time_windows_param.value = "NO_TIMEWINDOWS"
 
+        #Time Zone for Time Windows parameter
+        time_zone_for_time_windows_param = arcpy.Parameter("Time_Zone_for_Time_Windows", "Time Zone for Time Windows",
+                                                           "Input", "GPString", "Optional")
+        time_zone_for_time_windows_param.category = "Advanced Analysis"
+        time_zone_for_time_windows_param.filter.list = self.TIME_ZONE_USAGE
+        time_zone_for_time_windows_param.value = "Geographically Local"
+
         #Time of Day parameter
         time_of_day_param = common_parameters["Time_of_Day"]
         time_of_day_param.category = ""
@@ -106,7 +114,7 @@ class FindRoutes(nas.NetworkAnalysisTool):
         #Route shape parameter
         route_shape_param = arcpy.Parameter("Route_Shape", "Route Shape", "Input", "GPString", "Optional")
         route_shape_param.category = "Output"
-        route_shape_param.filter.list = ["True Shape", "Straight Line", "None"]
+        route_shape_param.filter.list = ["True Shape", "True Shape with Measures", "Straight Line", "None"]
         route_shape_param.value = "True Shape"
 
         #Populate route edges parameter
@@ -149,9 +157,12 @@ class FindRoutes(nas.NetworkAnalysisTool):
                   common_parameters["Route_Line_Simplification_Tolerance"], populate_route_edges_param,
                   populate_directions_param, directions_parameters["Directions_Language"],
                   directions_parameters["Directions_Distance_Units"], directions_parameters["Directions_Style_Name"],
-                  common_parameters["Travel_Mode"], common_parameters["Impedance"],
-                  common_parameters["Solve_Succeeded"], output_routes_param, output_route_edges_param,
-                  output_directions_param, output_stops_param]
+                  common_parameters["Travel_Mode"], common_parameters["Impedance"], time_zone_for_time_windows_param,
+                  common_parameters["Save_Output_Network_Analysis_Layer"], common_parameters["Overrides"],
+                  directions_parameters["Save_Route_Data"], common_parameters["Solve_Succeeded"], output_routes_param,
+                  output_route_edges_param, output_directions_param, output_stops_param,
+                  common_parameters["Output_Network_Analysis_Layer"], directions_parameters["Output_Route_Data"]
+                ]
 
         return params
 
@@ -192,20 +203,25 @@ class FindRoutes(nas.NetworkAnalysisTool):
             "Directions_Style_Name": parameters[25].valueAsText,
             "Travel_Mode": parameters[26].valueAsText,
             "Impedance": parameters[27].valueAsText,
+            "Time_Zone_for_Time_Windows": parameters[28].valueAsText,
+            "Save_Output_Network_Analysis_Layer": parameters[29].value,
+            "Overrides": parameters[30].valueAsText,
+            "Save_Route_Data": parameters[31].value, 
             "Service_Capabilities": tool_info_file,
-
         }
 
         find_routes = nas.FindRoutes(**tool_params)
         find_routes.execute()
 
         #Set derived outputs from the tool
-        DERIVED_OUTPUT_PARAMETER_START = 28
+        DERIVED_OUTPUT_PARAMETER_START = len(tool_params) - 1
         arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START, find_routes.solveSucceeded)
         arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START + 1, find_routes.outputRoutes)
         arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START + 2, find_routes.outputRouteEdges)
         arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START + 3, find_routes.outputDirections)
         arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START + 4, find_routes.outputStops)
+        arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START + 5, find_routes.outputLayer)
+        arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START + 6, find_routes.outputRouteData)
 
         return
 
@@ -282,7 +298,7 @@ class FindClosestFacilities(nas.NetworkAnalysisTool):
         #Route shape parameter
         route_shape_param = arcpy.Parameter("Route_Shape", "Route Shape", "Input", "GPString", "Optional")
         route_shape_param.category = "Output"
-        route_shape_param.filter.list = ["True Shape", "Straight Line", "None"]
+        route_shape_param.filter.list = ["True Shape", "True Shape with Measures", "Straight Line", "None"]
         route_shape_param.value = "True Shape"
         
         #Output routes parameter
@@ -311,8 +327,11 @@ class FindClosestFacilities(nas.NetworkAnalysisTool):
                   directions_parameters["Populate_Directions"], directions_parameters["Directions_Language"],
                   directions_parameters["Directions_Distance_Units"], directions_parameters["Directions_Style_Name"],
                   common_parameters["Time_Zone_for_Time_of_Day"], common_parameters["Travel_Mode"],
-                  common_parameters["Impedance"], output_routes_param, output_directions_param,
-                  common_parameters["Solve_Succeeded"], output_facilities_param]
+                  common_parameters["Impedance"], common_parameters["Save_Output_Network_Analysis_Layer"],
+                  common_parameters["Overrides"], directions_parameters["Save_Route_Data"], output_routes_param,
+                  output_directions_param, common_parameters["Solve_Succeeded"], output_facilities_param,
+                  common_parameters["Output_Network_Analysis_Layer"], directions_parameters["Output_Route_Data"]
+                  ]
 
         return params
 
@@ -353,6 +372,9 @@ class FindClosestFacilities(nas.NetworkAnalysisTool):
             "Time_Zone_for_Time_of_Day": parameters[25].valueAsText,
             "Travel_Mode": parameters[26].valueAsText,
             "Impedance": parameters[27].valueAsText,
+            "Save_Output_Network_Analysis_Layer": parameters[28].value,
+            "Overrides": parameters[29].valueAsText,
+            "Save_Route_Data" : parameters[30].value,
             "Service_Capabilities": tool_info_file,
         }
 
@@ -360,11 +382,13 @@ class FindClosestFacilities(nas.NetworkAnalysisTool):
         find_closest_facilities.execute()
 
         #Set derived outputs from the tool
-        DERIVED_OUTPUT_PARAMETER_START = 28
+        DERIVED_OUTPUT_PARAMETER_START = len(tool_params) - 1
         arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START, find_closest_facilities.outputRoutes)
         arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START + 1, find_closest_facilities.outputDirections)
         arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START + 2, find_closest_facilities.solveSucceeded)
         arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START + 3, find_closest_facilities.outputFacilities)
+        arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START + 4, find_closest_facilities.outputLayer)
+        arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START + 5, find_closest_facilities.outputRouteData)
 
         return
     
@@ -472,7 +496,9 @@ class GenerateServiceAreas(nas.NetworkAnalysisTool):
                   point_barriers_param, common_parameters["Line_Barriers"], polygon_barriers_param,
                   common_parameters["Restrictions"], common_parameters["Attribute_Parameter_Values"],
                   common_parameters["Time_Zone_for_Time_of_Day"], common_parameters["Travel_Mode"],
-                  common_parameters["Impedance"], service_areas_param, common_parameters["Solve_Succeeded"]
+                  common_parameters["Impedance"], common_parameters["Save_Output_Network_Analysis_Layer"],
+                  common_parameters["Overrides"], service_areas_param, common_parameters["Solve_Succeeded"],
+                  common_parameters["Output_Network_Analysis_Layer"]
                   ]
 
         return params
@@ -510,7 +536,9 @@ class GenerateServiceAreas(nas.NetworkAnalysisTool):
             "Time_Zone_for_Time_of_Day": parameters[21].valueAsText,
             "Travel_Mode": parameters[22].valueAsText,
             "Impedance": parameters[23].valueAsText,
-            "Service_Areas": parameters[24].valueAsText,
+            "Save_Output_Network_Analysis_Layer": parameters[24].value,
+            "Overrides" : parameters[25].valueAsText, 
+            "Service_Areas": parameters[26].valueAsText,
             "Service_Capabilities": tool_info_file,
         }
 
@@ -518,9 +546,10 @@ class GenerateServiceAreas(nas.NetworkAnalysisTool):
         generate_service_areas.execute()
 
         #Set derived outputs from the tool
-        DERIVED_OUTPUT_PARAMETER_START = 24
+        DERIVED_OUTPUT_PARAMETER_START = len(tool_params) - 2
         arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START, generate_service_areas.outputServiceAreas)
         arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START + 1, generate_service_areas.solveSucceeded)
+        arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START + 2, generate_service_areas.outputLayer)
 
 class SolveVehicleRoutingProblem(nas.NetworkAnalysisTool):
     '''SolveVehicleRoutingProblem tool in the VehicleRoutingProblem service'''
@@ -586,12 +615,12 @@ class SolveVehicleRoutingProblem(nas.NetworkAnalysisTool):
         
         #Time Units parameter
         time_units_param = arcpy.Parameter("time_units", "Time Units", "Input", "GPString", "Required")
-        time_units_param.filter.list = ["Seconds", "Minutes", "Hours", "Days"]
+        time_units_param.filter.list = self.TIME_UNITS
         time_units_param.value = "Minutes"
         
         #Distance Units parameter
         distance_units_param = arcpy.Parameter("distance_units", "Distance Units", "Input", "GPString", "Required")
-        distance_units_param.filter.list = ["Meters", "Kilometers", "Feet", "Yards", "Miles", "NauticalMiles"]
+        distance_units_param.filter.list = self.DISTANCE_UNITS
         distance_units_param.value = "Miles"
         
         #Default date param
@@ -664,6 +693,17 @@ class SolveVehicleRoutingProblem(nas.NetworkAnalysisTool):
         impedance_parameter_filter.remove("Travel Distance")
         impedance_parameter.filter.list = impedance_parameter_filter
 
+        #Time Zone Usage for Time Fields parameter
+        time_zone_usage_param = arcpy.Parameter("time_zone_usage_for_time_fields", "Time Zone Usage for Time Fields",
+                                                "Input", "GPString", "Optional")
+        time_zone_usage_param.category = "Advanced Analysis"
+        time_zone_usage_param.filter.list = ["UTC", "GEO_LOCAL"]
+        time_zone_usage_param.value = "GEO_LOCAL"
+
+        #Save Output Network Analysis Layer parameter
+        save_output_layer_param = common_parameters["save_output_network_analysis_layer"]
+        save_output_layer_param.name = "save_output_layer"
+
         #Output unassigned stops parameter
         output_unassigned_stops_param = arcpy.Parameter("out_unassigned_stops", "Output Unassigned Stops", "Output",
                                                         "DETable", "Derived")
@@ -680,6 +720,14 @@ class SolveVehicleRoutingProblem(nas.NetworkAnalysisTool):
                                                   "Derived")
         output_directions_param.symbology = os.path.join(self.layerFilesFolder, "VRPDirections.lyr")
 
+        #Output Network Analysis Layer parameter
+        output_layer_param = common_parameters["output_network_analysis_layer"]
+        output_layer_param.name = "out_network_analysis_layer"
+
+        #Output Route Data parameter
+        output_route_data_param = directions_parameters["output_route_data"]
+        output_route_data_param.name = "out_route_data"
+
 
         params = [orders_param, depots_param, routes_param, breaks_param, time_units_param, distance_units_param,
                   common_parameters["supporting_files_folder"], common_parameters["network_datasets"],  
@@ -692,8 +740,10 @@ class SolveVehicleRoutingProblem(nas.NetworkAnalysisTool):
                   common_parameters["route_line_simplification_tolerance"],
                   directions_parameters["populate_directions"], directions_parameters["directions_language"], 
                   directions_parameters["directions_style_name"], common_parameters["travel_mode"],
-                  impedance_parameter, output_unassigned_stops_param, output_stops_param, output_routes_param,
-                  output_directions_param, common_parameters["solve_succeeded"]
+                  impedance_parameter, time_zone_usage_param, save_output_layer_param, common_parameters["overrides"],
+                  directions_parameters["save_route_data"], output_unassigned_stops_param, output_stops_param,
+                  output_routes_param, output_directions_param, common_parameters["solve_succeeded"],
+                  output_layer_param, output_route_data_param
                   ]
 
         return params
@@ -738,6 +788,10 @@ class SolveVehicleRoutingProblem(nas.NetworkAnalysisTool):
             "Directions_Style_Name": parameters[28].valueAsText,
             "Travel_Mode": parameters[29].valueAsText,
             "Impedance": parameters[30].valueAsText,
+            "Time_Zone_Usage_for_Time_Fields": parameters[31].valueAsText,
+            "Save_Output_Network_Analysis_Layer": parameters[32].value,
+            "Overrides": parameters[33].valueAsText,
+            "Save_Route_Data" : parameters[34].value,
             "Service_Capabilities": tool_info_file,
         }
 
@@ -745,13 +799,14 @@ class SolveVehicleRoutingProblem(nas.NetworkAnalysisTool):
         solve_vrp.execute()
 
         #Set derived outputs from the tool
-        DERIVED_OUTPUT_PARAMETER_START = 31
+        DERIVED_OUTPUT_PARAMETER_START = len(tool_params) - 1
         arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START, solve_vrp.outputUnassignedStops)
         arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START + 1, solve_vrp.outputStops)
         arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START + 2, solve_vrp.outputRoutes)
         arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START + 3, solve_vrp.outputDirections)
         arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START + 4, solve_vrp.solveSucceeded)
-
+        arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START + 5, solve_vrp.outputLayer)
+        arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START + 6, solve_vrp.outputRouteData)
         return
 
 class EditVehicleRoutingProblem(SolveVehicleRoutingProblem):
@@ -904,9 +959,11 @@ class SolveLocationAllocation(nas.NetworkAnalysisTool):
                   common_parameters["Point_Barriers"], common_parameters["Line_Barriers"],
                   common_parameters["Polygon_Barriers"], common_parameters["Use_Hierarchy"],
                   common_parameters["Restrictions"], common_parameters["Attribute_Parameter_Values"], line_shape_param,
-                  common_parameters["Travel_Mode"], common_parameters["Impedance"], 
-                  common_parameters["Solve_Succeeded"], output_lines_param, output_facilities_param, 
-                  output_demand_points_param]
+                  common_parameters["Travel_Mode"], common_parameters["Impedance"],
+                  common_parameters["Save_Output_Network_Analysis_Layer"], common_parameters["Overrides"],
+                  common_parameters["Solve_Succeeded"], output_lines_param, output_facilities_param,
+                  output_demand_points_param, common_parameters["Output_Network_Analysis_Layer"]
+                  ]
 
         return params
 
@@ -946,6 +1003,8 @@ class SolveLocationAllocation(nas.NetworkAnalysisTool):
             "Allocation_Line_Shape": parameters[24].valueAsText, 
             "Travel_Mode": parameters[25].valueAsText,
             "Impedance": parameters[26].valueAsText,
+            "Save_Output_Network_Analysis_Layer": parameters[27].value,
+            "Overrides": parameters[28].valueAsText,
             "Service_Capabilities": tool_info_file,
         }
 
@@ -953,13 +1012,159 @@ class SolveLocationAllocation(nas.NetworkAnalysisTool):
         solve_location_allocation.execute()
 
         #Set derived outputs from the tool
-        DERIVED_OUTPUT_PARAMETER_START = 27
+        DERIVED_OUTPUT_PARAMETER_START = len(tool_params) - 1
         arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START, solve_location_allocation.solveSucceeded)
         arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START + 1, solve_location_allocation.outputAllocationLines)
         arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START + 2, solve_location_allocation.outputFacilities)
         arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START + 3, solve_location_allocation.outputDemandPoints)
+        arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START + 4, solve_location_allocation.outputLayer)
 
         return
+
+class GenerateOriginDestinationCostMatrix(nas.NetworkAnalysisTool):
+    '''GenerateOriginDestinationCostMatrix tool in OriginDestinationCostMatrix service'''
+
+    def __init__(self):
+
+        self.label = "GenerateOriginDestinationCostMatrix"
+        self.description = ""
+        self.category = "OriginDestinationCostMatrix"
+        self.canRunInBackground = False
+
+        super(GenerateOriginDestinationCostMatrix, self).__init__()
+
+        #Store frequently used tool parameters as instance attributes
+        self.SUPPORTING_FILES_FOLDER_PARAM_INDEX = 2
+        self.NETWORK_DATASETS_PARAM_INDEX = 3
+        self.NETWORK_DATASET_EXTENTS_PARAM_INDEX = 4
+        self.ANALYSIS_REGION_PARAM_INDEX = 8
+        self.UTURN_POLICY_PARAM_INDEX = 16
+        self.HIERARCHY_PARAM_INDEX = 17
+        self.RESTRICTIONS_PARAM_INDEX = 18
+        self.ATTRIBUTE_PARAMETER_VALUES_PARAM_INDEX = 19
+        self.SIMPLIFICATION_TOL_PARAM_INDEX = -1
+    
+    def getParameterInfo(self):
+        """Define parameter definitions"""
+        
+        #Get common parameters
+        common_parameters = self._initializeCommonParameters()
+
+        #Origins parameter
+        origins_param = arcpy.Parameter("Origins", "Origins",  "Input", "GPFeatureRecordSetLayer", "Required")
+        origins_param.value = os.path.join(self.layerFilesFolder,  "ODOrigins.lyr")
+
+        #Destinations parameter
+        destinations_param = arcpy.Parameter("Destinations", "Destinations",  "Input", "GPFeatureRecordSetLayer",
+                                          "Required")
+        destinations_param.value = os.path.join(self.layerFilesFolder,  "ODDestinations.lyr")
+
+        #Time Units parameter
+        time_units_param = arcpy.Parameter("Time_Units", "Time Units", "Input", "GPString", "Optional")
+        time_units_param.filter.list = self.TIME_UNITS
+        time_units_param.value = "Minutes"
+
+        #Distance Units parameter
+        distance_units_param = arcpy.Parameter("Distance_Units", "Distance Units", "Input", "GPString", "Optional")
+        distance_units_param.filter.list = self.DISTANCE_UNITS
+        distance_units_param.value = "Kilometers"
+
+        #Number of Destinations to Find parameter
+        number_of_destinations_param = arcpy.Parameter("Number_of_Destinations_to_Find",
+                                                       "Number of Destinations to Find", "Input", "GPLong", "Optional")
+        number_of_destinations_param.category = "Advanced Analysis"
+        number_of_destinations_param.value = None
+
+        #Cutoff parameter
+        cutoff_param = arcpy.Parameter("Cutoff", "Cutoff", "Input", "GPDouble", "Optional")
+        cutoff_param.category = "Advanced Analysis"
+        cutoff_param.value = None
+
+        #Origin Destination Line Shape parameter
+        od_line_shape = arcpy.Parameter("Origin_Destination_Line_Shape", "Origin Destination Line Shape", "Input",
+                                        "GPString", "Optional")
+        od_line_shape.category = "Output"
+        od_line_shape.filter.list = ["None", "Straight Line"]
+        od_line_shape.value = "None"
+
+        #Output Origin Destination Lines parameter
+        output_odlines_param = arcpy.Parameter("Output_Origin_Destination_Lines", "Output Origin Destination Lines",
+                                               "Output", "DEFeatureClass", "Derived")
+        output_odlines_param.symbology = os.path.join(self.layerFilesFolder, "ODLines.lyr")
+        
+        #Output Origins parameter
+        output_origins_param = arcpy.Parameter("Output_Origins", "Output Origins", "Output", "DEFeatureClass",
+                                               "Derived")
+        output_origins_param.symbology = os.path.join(self.layerFilesFolder, "ODOrigins.lyr")
+
+        #Output Destinations parameter
+        output_destinations_param = arcpy.Parameter("Output_Destinations", "Output Destinations", "Output", 
+                                                    "DEFeatureClass", "Derived")
+        output_destinations_param.symbology = os.path.join(self.layerFilesFolder, "ODDestinations.lyr")
+
+        params = [origins_param, destinations_param, common_parameters["Supporting_Files_Folder"],
+                  common_parameters["Network_Datasets"], common_parameters["Network_Dataset_Extents"],
+                  common_parameters["Travel_Mode"], time_units_param, distance_units_param, 
+                  common_parameters["Analysis_Region"], number_of_destinations_param, cutoff_param, 
+                  common_parameters["Time_of_Day"], common_parameters["Time_Zone_for_Time_of_Day"],
+                  common_parameters["Point_Barriers"], common_parameters["Line_Barriers"],
+                  common_parameters["Polygon_Barriers"], common_parameters["UTurn_at_Junctions"],
+                  common_parameters["Use_Hierarchy"], common_parameters["Restrictions"],
+                  common_parameters["Attribute_Parameter_Values"], common_parameters["Impedance"], od_line_shape,
+                  common_parameters["Save_Output_Network_Analysis_Layer"], common_parameters["Overrides"],
+                  common_parameters["Solve_Succeeded"], output_odlines_param, output_origins_param,
+                  output_destinations_param, common_parameters["Output_Network_Analysis_Layer"]
+                  ]
+
+        return params
+
+    def execute(self, parameters, messages):
+        """The source code of the tool."""
+
+        #Convert the parameter values in the format required by the nas.FindRoutes class
+        supporting_files_folder = parameters[self.SUPPORTING_FILES_FOLDER_PARAM_INDEX].valueAsText
+        nds_properties_file = os.path.join(supporting_files_folder, self.NETWORK_DATASET_PROPERTIES_FILENAME)
+        tool_info_file = os.path.join(supporting_files_folder, self.TOOL_INFO_FILENAME)
+        
+        tool_params = {
+            "Origins": parameters[0].value,
+            "Destinations": parameters[1].value,
+            "NDS_Properties_File": nds_properties_file,
+            "Network_Datasets": parameters[self.NETWORK_DATASETS_PARAM_INDEX].valueAsText,
+            "Network_Dataset_Extents": parameters[self.NETWORK_DATASET_EXTENTS_PARAM_INDEX].valueAsText,
+            "Travel_Mode": parameters[5].valueAsText,
+            "Time_Units": parameters[6].valueAsText,
+            "Distance_Units": parameters[7].valueAsText,
+            "Analysis_Region" : parameters[self.ANALYSIS_REGION_PARAM_INDEX].valueAsText,
+            "Number_of_Destinations_to_Find" : parameters[9].value,
+            "Cutoff": parameters[10].valueAsText,
+            "Time_of_Day": parameters[11].value,
+            "Time_Zone_for_Time_of_Day": parameters[12].valueAsText,
+            "Point_Barriers": parameters[13].value,
+            "Line_Barriers": parameters[14].value,
+            "Polygon_Barriers": parameters[15].value,
+            "Uturn_at_Junctions": parameters[self.UTURN_POLICY_PARAM_INDEX].valueAsText,
+            "Use_Hierarchy": parameters[self.HIERARCHY_PARAM_INDEX].value,
+            "Restrictions": parameters[self.RESTRICTIONS_PARAM_INDEX].values,
+            "Attribute_Parameter_Values": parameters[self.ATTRIBUTE_PARAMETER_VALUES_PARAM_INDEX].value,
+            "Impedance": parameters[20].valueAsText,
+            "Origin_Destination_Line_Shape": parameters[21].valueAsText,
+            "Save_Output_Network_Analysis_Layer": parameters[22].value,
+            "Overrides": parameters[23].valueAsText, 
+            "Service_Capabilities": tool_info_file,
+        }
+
+        generate_od_cost_matrix = nas.GenerateOriginDestinationCostMatrix(**tool_params)
+        generate_od_cost_matrix.execute()
+
+
+        #Set derived outputs from the tool
+        DERIVED_OUTPUT_PARAMETER_START = len(tool_params) - 1
+        arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START, generate_od_cost_matrix.solveSucceeded)
+        arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START + 1, generate_od_cost_matrix.outputODLines)
+        arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START + 2, generate_od_cost_matrix.outputOrigins)
+        arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START + 3, generate_od_cost_matrix.outputDestinations)
+        arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START + 4, generate_od_cost_matrix.outputLayer)
 
 class GetTravelModes(object):
     '''GetTravelModes tool in Utilities service.'''

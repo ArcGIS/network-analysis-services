@@ -2,3 +2,4 @@
 *.pyproj
 *.sln
 *.suo
+.vs

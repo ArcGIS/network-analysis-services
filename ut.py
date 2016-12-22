@@ -1,4 +1,4 @@
-########################################################################################
+﻿########################################################################################
 ## Copyright 2016 Esri
 ## Licensed under the Apache License, Version 2.0 (the "License");
 ## you may not use this file except in compliance with the License.
@@ -77,6 +77,15 @@ class CreateSupportingFiles(object):
             ("forceHierarchyBeyondDistance", None),
             ("forceHierarchyBeyondDistanceUnits", "Miles")
         )),
+        "GenerateOriginDestinationCostMatrix": collections.OrderedDict((
+            ("maximumFeaturesAffectedByPointBarriers", None),
+            ("maximumFeaturesAffectedByLineBarriers", None),
+            ("maximumFeaturesAffectedByPolygonBarriers", None),
+            ("maximumOrigins", None),
+            ("maximumDestinations", None),
+            ("forceHierarchyBeyondDistance", None),
+            ("forceHierarchyBeyondDistanceUnits", "Miles")
+        )),
         "GenerateServiceAreas": collections.OrderedDict(( 
             ("maximumFeaturesAffectedByPointBarriers", None),
             ("maximumFeaturesAffectedByLineBarriers", None),
@@ -124,6 +133,88 @@ class CreateSupportingFiles(object):
         )),
     }
 
+    TIME_UNITS = ('Minutes', 'Hours', 'Days', 'Seconds')
+
+    class NetworkDatasetAttributes(object):
+        '''Store info about network dataset attributes such as default restrictions, time costs,
+        distance costs and default impedance attribute'''
+
+        def __init__(self, nds_desc, populate_attribute_parameters=True):
+            '''Derive info from network dataset attributes'''
+
+            time_costs = []
+            distance_costs = []
+            other_costs = []
+            count = 0
+            self.defaultRestrictionAttributes = []
+            self.restrictions = []
+            self.timeCosts = {}
+            self.distanceCosts = {}
+            self.otherCosts = {}
+            self.defaultImpedanceAttribute = ""
+            self.attributeParameters = {}
+
+            attributes = nds_desc.attributes
+            for attribute in attributes:
+                usage_type = attribute.usageType
+                name = attribute.name
+                unit = attribute.units
+                use_by_default = attribute.useByDefault 
+                if usage_type == "Restriction":
+                    if use_by_default:
+                        self.defaultRestrictionAttributes.append(name)
+                    self.restrictions.append(name)
+                elif usage_type == "Cost":
+                    #Determine if it is time based or distance based
+                    if unit in CreateSupportingFiles.TIME_UNITS:
+                        time_costs.append((name, unit))
+                        if use_by_default:  
+                            self.defaultImpedanceAttribute = name
+                    elif unit.lower() == "unknown":
+                        other_costs.append((name, unit))
+                    else:
+                        distance_costs.append((name, unit))
+                        if use_by_default:
+                            self.defaultImpedanceAttribute = name
+                else:
+                    pass
+
+                #populate all the attribute parameters and their default values.
+                #Store this in a dict with key of row id and value as a list
+                if populate_attribute_parameters:
+                    parameter_count = attribute.parameterCount
+                    if parameter_count:
+                        for i in range(parameter_count):
+                            param_name = getattr(attribute, "parameterName" + str(i))
+                            param_default_value = None
+                            if hasattr(attribute, "parameterDefaultValue" + str(i)):
+                                param_default_value = str(getattr(attribute, "parameterDefaultValue" + str(i)))
+                                if param_name.upper() == "RESTRICTION USAGE" and param_default_value in CreateSupportingFiles.RESTRICTION_USAGE_VALUES:
+                                    param_default_value = CreateSupportingFiles.RESTRICTION_USAGE_VALUES[param_default_value]
+                            count += 1
+                            self.attributeParameters[count] = (name, param_name, param_default_value)
+        
+            # If the network dataset does not define the default cost attribute, use in this order
+            #     - first time based cost attribute
+            #     - first distance based cost attribute
+            #     - first cost attribute
+            if not self.defaultImpedanceAttribute:
+                if time_costs:
+                    self.defaultImpedanceAttribute = time_costs[0][0]
+                elif distance_costs:
+                    self.defaultImpedanceAttribute = distance_costs[0][0]
+                elif other_costs:
+                    self.defaultImpedanceAttribute = other_costs[0][0]
+                else:
+                    self.defaultImpedanceAttribute = ""
+
+            #Return costs as dicts of name: unit
+            self.timeCosts = dict(time_costs)
+            self.distanceCosts = dict(distance_costs)
+            self.otherCosts = dict(other_costs)
+
+            return
+            
     def __init__(self, *args, **kwargs):
         '''Constructor'''
 
@@ -208,13 +299,13 @@ class CreateSupportingFiles(object):
                          "walk_time_attribute_units", "truck_time_attribute", "truck_time_attribute_units",
                          "non_walking_restrictions", "walking_restriction", "trucking_restriction",
                          "time_neutral_attribute", "time_neutral_attribute_units")
-        time_units = ('Minutes', 'Hours', 'Days', 'Seconds')
         populate_attribute_parameters = True
-        
         esmp_travel_mode_names = ("DRIVING TIME", "DRIVING DISTANCE", "TRUCKING TIME", "TRUCKING DISTANCE",
                                   "WALKING TIME", "WALKING DISTANCE", "RURAL DRIVING TIME", "RURAL DRIVING DISTANCE")
         default_time_attr = ""
         default_distance_attr = ""
+        default_impedance_attr = ""
+        default_travel_mode_name = ""
         default_restriction_attrs = []
         time_costs = {}
         distance_costs = {}
@@ -222,57 +313,46 @@ class CreateSupportingFiles(object):
         enable_hierarchy = False
         hierarchy = 0
         attribute_parameters = {}
-        count = 0
         network_properties = dict.fromkeys(property_names)
         
         nds_desc = arcpy.Describe(network)
         nds_type = nds_desc.networkType
         is_sdc_nds = (nds_type == 'SDC')
 
+        nds_travel_modes = {k.upper() : v for k,v in arcpy.na.GetTravelModes(nds_desc.catalogPath).iteritems()}
+
         #Build a list of restriction, time and distance cost attributes
         #Get default attributes for geodatabase network datasets.
-        attributes = nds_desc.attributes
-        for attribute in attributes:
-            usage_type = attribute.usageType
-            name = attribute.name
-            unit = attribute.units
-            use_by_default = attribute.useByDefault 
-            if usage_type == "Restriction":
-                if use_by_default:
-                    default_restriction_attrs.append(name)
-                restrictions.append(name)
-            elif usage_type == "Cost":
-                #Determine if it is time based or distance based
-                if unit in time_units:
-                    time_costs[name] = unit
-                    if use_by_default:  
-                        default_time_attr = name
-                else:
-                    distance_costs[name] = unit
-                    if use_by_default:
-                        default_distance_attr = name
-            else:
-                pass
-            #populate all the attribute parameters and their default values.
-            #Store this in a dict with key of row id and value as a list
-            if populate_attribute_parameters:
-                parameter_count = attribute.parameterCount
-                if parameter_count:
-                    for i in range(parameter_count):
-                        param_name = getattr(attribute, "parameterName" + str(i))
-                        param_default_value = None
-                        if hasattr(attribute, "parameterDefaultValue" + str(i)):
-                            param_default_value = str(getattr(attribute, "parameterDefaultValue" + str(i)))
-                            if param_name.upper() == "RESTRICTION USAGE" and param_default_value in self.RESTRICTION_USAGE_VALUES:
-                                param_default_value = self.RESTRICTION_USAGE_VALUES[param_default_value]
-                        count += 1
-                        attribute_parameters[count] = (name, param_name, param_default_value)
+        nds_attributes = self.NetworkDatasetAttributes(nds_desc, populate_attribute_parameters)
+        default_impedance_attr = nds_attributes.defaultImpedanceAttribute
+        default_restriction_attrs = nds_attributes.defaultRestrictionAttributes
+        time_costs = nds_attributes.timeCosts
+        distance_costs = nds_attributes.distanceCosts
+        restrictions = nds_attributes.restrictions
+        attribute_parameters = nds_attributes.attributeParameters
         
-        #Set the default time and distance attributes.
+        #Set the default time and distance attributes based on default travel mode. If a default travel mode is not
+        #set use the default cost attribute. If even a defualt cost attribute is not set, use the first time based
+        #cost attribute in alphabetical order and last distance based cost attribute.
         first_time_cost_attribute = sorted(time_costs.keys())[0]
+        default_travel_mode_name = nds_desc.defaultTravelModeName
+        if default_travel_mode_name and default_travel_mode_name.upper() in nds_travel_modes:
+            default_travel_mode = nds_travel_modes[default_travel_mode_name.upper()]
+            default_time_attr = default_travel_mode.timeAttributeName
+            default_distance_attr = default_travel_mode.distanceAttributeName
+        elif default_impedance_attr in time_costs:
+            default_time_attr = default_impedance_attr
+        elif default_impedance_attr in distance_costs:
+            default_distance_attr = default_impedance_attr
+        
         if default_time_attr == "":
             #if there is no default use the first one in the list
-            default_time_attr = first_time_cost_attribute 
+            default_time_attr = first_time_cost_attribute
+        
+        if default_distance_attr == "":
+            #Use the last one in case a default is not set
+            default_distance_attr = sorted(distance_costs.keys())[-1]
+         
         network_properties["time_attribute"] = default_time_attr
         network_properties["time_attribute_units"] = time_costs[default_time_attr]
         #Set the walk time and truck travel time attribute and their units. If the attributes with name
@@ -287,9 +367,6 @@ class CreateSupportingFiles(object):
         network_properties["time_neutral_attribute"] = time_neutral_attribute
         network_properties["time_neutral_attribute_units"] = time_costs[time_neutral_attribute]
 
-        if default_distance_attr == "":
-            #Use the last one in case a default is not set
-            default_distance_attr = sorted(distance_costs.keys())[-1]
         network_properties["distance_attribute"] = default_distance_attr
         network_properties["distance_attribute_units"] = distance_costs[default_distance_attr]
         
@@ -325,8 +402,7 @@ class CreateSupportingFiles(object):
         
         #Store the travel modes in a dict with key as a two value tuple (travel mode type, isModeTimeBased) 
         #and value as travel mode name
-        nds_travel_modes = {k.upper() : v
-                            for k,v in arcpy.na.GetTravelModes(nds_desc.catalogPath).iteritems()}
+        
         travel_modes = {}
         for travel_mode_name in nds_travel_modes:
             nds_travel_mode = json.loads(unicode(nds_travel_modes[travel_mode_name]))
@@ -454,6 +530,8 @@ class CreateSupportingFiles(object):
         nds_attribute_prop_names = ("name", "dataType", "units", "usageType", "parameterNames",
                                     "restrictionUsageParameterName", "trafficSupport")
         nds_traffic_support_type = "NONE"
+        default_cost_attribute = ""
+        default_restrictions = []
         
         #Get network dataset traffic support type
         if hasattr(self.templateNDSDesc, "trafficSupportType"):
@@ -476,6 +554,7 @@ class CreateSupportingFiles(object):
         #Get information about network dataset attributes including attribute parameter values
         for nds_attribute in self.templateNDSDesc.attributes:
             nds_attribute_name = nds_attribute.name
+           
             nds_attribute_traffic_support_type = self._getNDSAttributeTrafficSupportType(nds_attribute,
                                                                                          nds_traffic_support_type)
             nds_attribute_parameter_names = []
@@ -512,8 +591,15 @@ class CreateSupportingFiles(object):
                                        )
                                   )
 
+        #Get default cost and restriction attributes
+        nds_attrs = self.NetworkDatasetAttributes(self.templateNDSDesc, False)
+        default_cost_attribute = nds_attrs.defaultImpedanceAttribute
+        default_restrictions = nds_attrs.defaultRestrictionAttributes
+
         network_dataset_description = {
             "attributeParameterValues": attribute_parameter_values,
+            "defaultCostAttribute" : default_cost_attribute,
+            "defaultRestrictions" : default_restrictions,
             "networkAttributes": nds_attributes,
             "supportedTravelModes": self.travelModesJSON.get("supportedTravelModes", []),
             "trafficSupport": nds_traffic_support_type,
@@ -552,7 +638,7 @@ class CreateSupportingFiles(object):
                     limit_value = None
                 else:
                     try:
-                        limit_value = locale.atof(limit_value)
+                        limit_value = nas.str_to_float(limit_value)
                     except Exception as ex:
                         pass
                 tool_limits.setdefault(tool_name, dict())
@@ -668,7 +754,7 @@ class PublishRoutingServices(object):
             if not user_privilege in ("ADMINISTER"):
                 self.logger.error("User {0} does not have administrator privilege".format(self.userName))
                 raise arcpy.ExecuteError
-
+        
         #Create a AGS file with server connection info
         ags_connection_file_name = "server.ags"
         self.agsConnectionFile = os.path.join(self.serviceDefinitionFolder, ags_connection_file_name)
@@ -700,7 +786,7 @@ class PublishRoutingServices(object):
             raise arcpy.ExecuteError
         else:
             self.logger.debug(u"File geodatabase containing the network dataset on GIS Server: {}".format(validate_data_store_result.getInput(0)))
-        
+
         #Check if service folder name Routing exists. If not create it
         #Get a list of existing service folders
         services_root_url = "{0}/admin/services".format(self.serverUrl)
@@ -897,7 +983,7 @@ class PublishRoutingServices(object):
 
         ##Publish Network Analysis Geoprocessing service
         self.logger.info("Running geoprocessing tools to publish network analysis geoprocessing service")
-        
+
         #Use the endpoints of the first feature in the streets edge source as the inputs for gp services
         system_junctions_feature_class = os.path.join(os.path.dirname(self.templateNDSDescribe.catalogPath), 
                                                       self.templateNDSDescribe.systemJunctionSource.name)
@@ -923,6 +1009,9 @@ class PublishRoutingServices(object):
                 cursor.updateRow(row)        
         
         #Run geoprocessing tools that are inculded in the GP service.
+
+
+
         find_routes_result = nast.FindRoutes(rt_stops, "Minutes", supporting_files_folder)
 
         incidents = "in_memory\\InputIncidents"
@@ -944,13 +1033,16 @@ class PublishRoutingServices(object):
         solve_vrp_result = nast.SolveVehicleRoutingProblem(incidents, vrp_depots, vrp_routes, "", "Minutes", "Miles",
                                                            supporting_files_folder)
 
+        generate_od_result = nast.GenerateOriginDestinationCostMatrix(facilities, incidents, supporting_files_folder)
+
         #Create the SD draft
         na_gpservice_sddraft = os.path.join(self.serviceDefinitionFolder, NA_GP_SERVICE_NAME + "_GPServer.sddraft")
         sddraft_msgs = arcpy.CreateGPSDDraft([find_routes_result,
                                               find_cf_result,
                                               generate_sa_result,
                                               solve_la_result,
-                                              solve_vrp_result],
+                                              solve_vrp_result,
+                                              generate_od_result],
                                              na_gpservice_sddraft, NA_GP_SERVICE_NAME, "FROM_CONNECTION_FILE",
                                              self.agsConnectionFile, False, ROUTING_SERVICE_FOLDER_NAME,
                                              NA_GP_SERVICE_SUMMARY, NA_GP_SERVICE_TAGS, "Asynchronous", False,
@@ -1122,12 +1214,14 @@ class PublishRoutingServices(object):
             route_sync_url = "{}/Route".format(network_analysis_naserver_service)
             route_async_url = "{}".format(self.networkAnalysisGeoprocessingService)
             location_allocation_async_url = "{}".format(self.networkAnalysisGeoprocessingService)
+            od_async_url = "{}".format(self.networkAnalysisGeoprocessingService)
             routing_utlities_url = "{}".format(self.networkAnalysisUtilitiesGeoprocessingService)
             traffic_url = "{}".format(self.networkAnalysisMapService)
     
             portals_self_update_query_params = dict(self.siteAdminToken)
             portals_self_update_query_params['asyncClosestFacilityService'] = {"url": closest_facility_async_url}
             portals_self_update_query_params['asyncLocationAllocationService'] = {"url": location_allocation_async_url}
+            portals_self_update_query_params['asyncODCostMatrixService'] = {"url": od_async_url}
             portals_self_update_query_params['asyncRouteService'] = {"url": route_async_url}
             portals_self_update_query_params['asyncServiceAreaService'] = {"url": service_area_async_url}
             portals_self_update_query_params['syncVRPService'] = {"url": vrp_sync_url}
@@ -1156,7 +1250,7 @@ class PublishRoutingServices(object):
         #skip cleanup if log level is DEBUG
         if self.logger.DEBUG:
             return
-        
+
         #Remove imported Remote Toolboxes
         try:
             arcpy.RemoveToolbox(self.publishingToolsToolbox)
@@ -1176,7 +1270,6 @@ class PublishRoutingServices(object):
         if self.supportingFilesFolder:
             shutil.rmtree(self.supportingFilesFolder, ignore_errors=True)
 
-        
         #Close the file handler
         self.logger.fileLogger.handlers[0].close()
 

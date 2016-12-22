@@ -1,47 +1,34 @@
-<metadata xml:lang="en">
-	<!--
- /*
- * Copyright 2016 Esri
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
-       http://www.apache.org/licenses/LICENSE-2.0
- * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
- * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and limitations under the License.​
- */
- -->
+<?xml version="1.0" encoding="utf-8"?>
+<metadata>
 	<Esri>
-		<CreaDate>20150429</CreaDate>
-		<CreaTime>20262500</CreaTime>
+		<CreaDate>20161007</CreaDate>
+		<CreaTime>15131000</CreaTime>
 		<ArcGISFormat>1.0</ArcGISFormat>
 		<SyncOnce>TRUE</SyncOnce>
-		<ModDate>20151011</ModDate>
-		<ModTime>133640</ModTime>
-		<scaleRange>
-			<minScale>150000000</minScale>
-			<maxScale>5000</maxScale>
-		</scaleRange>
-		<ArcGISProfile>ItemDescription</ArcGISProfile>
+		<ModDate>20161114</ModDate>
+		<ModTime>142837</ModTime>
 	</Esri>
-	<tool name="GetTravelModes" displayname="GetTravelModes" toolboxalias="" xmlns="">
-		<arcToolboxHelpPath>c:\program files (x86)\arcgis\desktop10.3\Help\gp</arcToolboxHelpPath>
-		<parameters>
-			<param name="propertiesFile" displayname="Properties File" type="Required" direction="Input" datatype="File" expression="propertiesFile"/>
-			<param name="defaultTravelModesFile" displayname="Default Travel Modes File" type="Required" direction="Input" datatype="File" expression="defaultTravelModesFile"/>
-			<param name="defaultLocalizedTravelModesFile" displayname="Default Localized Travel Modes File" type="Optional" direction="Input" datatype="File" expression="{defaultLocalizedTravelModesFile}"/>
-		</parameters>
-		<summary>&lt;DIV STYLE="text-align:Left;"&gt;&lt;DIV&gt;&lt;DIV&gt;&lt;P&gt;&lt;SPAN&gt;Get a list of travel modes defined for your organization that can be used with directions and routing services available in ArcGIS Online.&lt;/SPAN&gt;&lt;/P&gt;&lt;/DIV&gt;&lt;/DIV&gt;&lt;/DIV&gt;</summary>
-	</tool>
 	<dataIdInfo>
 		<idCitation>
 			<resTitle>GetTravelModes</resTitle>
+			<date>
+				<createDate>20161007</createDate>
+			</date>
 		</idCitation>
-		<idAbs>&lt;DIV STYLE="text-align:Left;"&gt;&lt;DIV&gt;&lt;DIV&gt;&lt;P&gt;&lt;SPAN&gt;Get a list of travel modes defined for your organization that can be used with directions and routing services available in ArcGIS Online.&lt;/SPAN&gt;&lt;/P&gt;&lt;/DIV&gt;&lt;/DIV&gt;&lt;/DIV&gt;</idAbs>
-		<idCredit>Esri</idCredit>
+		<idAbs>
+			<para>
+ Get a list of travel modes configured for your organization that can be used with ArcGIS Online network analysis services.   A travel mode represents a means of transportation, such as driving or walking. Travel modes are essentially templates consisting of a long list of travel settings.</para>
+		</idAbs>
+		<descKeys KeyTypCd="005">
+			<keyTyp>
+				<keyTyp>005</keyTyp>
+			</keyTyp>
+			<keyword/>
+		</descKeys>
 		<searchKeys>
 			<keyword>travel modes</keyword>
 		</searchKeys>
+		<idCredit>Esri</idCredit>
 		<resConst>
 			<Consts>
 				<useLimit>&lt;DIV STYLE="text-align:Left;"&gt;&lt;P STYLE="font-size:16ptmargin:7 0 7 0;"&gt;&lt;SPAN&gt;&lt;SPAN&gt;This tool is available for users with an &lt;/SPAN&gt;&lt;/SPAN&gt;&lt;A href="http://www.arcgis.com/features/plans/pricing.html"&gt;&lt;SPAN&gt;&lt;SPAN&gt;ArcGIS Online organizational subscription&lt;/SPAN&gt;&lt;/SPAN&gt;&lt;/A&gt;&lt;SPAN&gt;. To access this geoprocessing tool, you'll need to sign in with an account that is a member of an organizational subscription. Executing this tool does not incur &lt;/SPAN&gt;&lt;A href="http://links.esri.com/network-analysis-service-credits"&gt;&lt;SPAN&gt;&lt;SPAN&gt;service credits&lt;/SPAN&gt;&lt;/SPAN&gt;&lt;/A&gt;&lt;/P&gt;&lt;/DIV&gt;</useLimit>
@@ -55,7 +42,103 @@
 			</distorFormat>
 		</distributor>
 	</distInfo>
-	<mdHrLv>
-		<ScopeCd value="005"/>
-	</mdHrLv>
+	<mdDateSt>20161108</mdDateSt>
+	<mdContact>
+		<rpOrgName>Environmental Systems Research Institute, Inc. (Esri)</rpOrgName>
+		<rpCntInfo>
+			<cntAddress>
+				<delPoint>380 New York Street</delPoint>
+				<city>Redlands</city>
+				<adminArea>California</adminArea>
+				<postCode>92373-8100</postCode>
+				<eMailAdd>info@esri.com</eMailAdd>
+				<country>United States</country>
+			</cntAddress>
+			<cntPhone>
+				<voiceNum>909-793-2853</voiceNum>
+				<faxNum>909-793-5953</faxNum>
+			</cntPhone>
+			<cntOnlineRes>
+				<linkage>http://www.esri.com</linkage>
+			</cntOnlineRes>
+		</rpCntInfo>
+		<role>
+			<RoleCd>007</RoleCd>
+		</role>
+	</mdContact>
+	<tool displayname="GetTravelModes" name="GetTravelModes" softwarerestriction="none" toolboxalias="nast">
+		<summary>
+			<para>
+ Get a list of travel modes configured for your organization that can be used with ArcGIS Online network analysis services.   A travel mode represents a means of transportation, such as driving or walking. Travel modes are essentially templates consisting of a long list of travel settings.</para>
+		</summary>
+		<alink_name>
+GetTravelModes
+_naagol</alink_name>
+		<parameters>
+			<param name="supportingFiles" displayname="Supporting Files" type="Required" direction="Input" datatype="Value Table" expression="Supporting File {File Type};Supporting File {File Type}..."/>
+		</parameters>
+		<returnvalues/>
+		<usage>
+			<bullet_item>
+Upon execution, the tool adds a table, Supported Travel Modes, to the application. Any value in the Travel Mode Name field from the Supported Travel Modes table can be specified as input to the travel_mode parameter supported by the different tools, such as FindRoutes, in the geoprocessing service. You can also specify the value from Travel Mode Settings field as input to the travel_mode parameter. This speeds up the execution of the tools, such as FindRoutes,  because the tool does not have to look up the settings based on the travel mode name.
+</bullet_item>
+			<bullet_item>
+				<para>The tool does not support any input parameters</para>
+			</bullet_item>
+		</usage>
+		<scriptExamples>
+			<scriptExample>
+				<title>GetTravelMode example</title>
+				<para>The following Python script demonstrates how to use the GetTravelMode tool in a script.</para>
+				<code xml:space="preserve">'''
+The script shows how to use the GetTravelModes tool to get a list of travel modes supported by your
+ArcGIS Online organization.
+'''
+import sys
+
+import arcpy
+
+#Change the username and password applicable to your own ArcGIS Online account
+username = "&lt;your user name&gt;"
+password = "&lt;your password&gt;"
+ 
+utility_service = "https://logistics.arcgis.com/arcgis/services;World/Utilities;{0};{1}".format(username, password)
+
+#Add the geoprocessing service as a toolbox.
+arcpy.ImportToolbox(utility_service)
+
+#Call the tool
+result = arcpy.Utilities.GetTravelModes()
+
+#Print any warning or error messages returned from the tool
+result_severity = arcpy.GetMaxSeverity()
+if result_severity == 2:
+    arcpy.AddMessage("An error occured when running the tool")
+    arcpy.AddMessage(arcpy.GetMessages(2))
+    sys.exit(2)
+elif result_severity == 1:
+    arcpy.AddMessage("Warnings were returned when running the tool")
+    arcpy.AddMessage(arcpy.GetMessages(1))
+
+#Retrieve the travel mode table
+output_tm_table = result.getOutput(0)
+
+#Save the travel mode table in memory.
+output_tm_table.save("in_memory/TravelModes")
+
+#Use a cursor to build a list of travel mode names from the table
+arcpy.AddMessage("Travel Modes configured for your organization")
+travel_mode_names = []
+with arcpy.da.SearchCursor(output_tm_table, ["Name"]) as cursor:
+    for row in cursor:
+        travel_mode_names.append(row[0])
+        arcpy.AddMessage(row[0])
+                    </code>
+			</scriptExample>
+		</scriptExamples>
+		<shortdesc>
+ Get a list of travel modes defined for your organization that can be used with directions and routing services available in ArcGIS Online.
+</shortdesc>
+		<arcToolboxHelpPath>c:\program files (x86)\arcgis\desktop10.5\Help\gp</arcToolboxHelpPath>
+	</tool>
 </metadata>
