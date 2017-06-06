@@ -1,5 +1,5 @@
 ﻿########################################################################################
-## Copyright 2016 Esri
+## Copyright 2017 Esri
 ## Licensed under the Apache License, Version 2.0 (the "License");
 ## you may not use this file except in compliance with the License.
 ## You may obtain a copy of the License at
@@ -209,20 +209,21 @@ class FindRoutes(nas.NetworkAnalysisTool):
             "Save_Route_Data": parameters[31].value, 
             "Service_Capabilities": tool_info_file,
         }
+        try:
+            find_routes = nas.FindRoutes(**tool_params)
+            find_routes.execute()
 
-        find_routes = nas.FindRoutes(**tool_params)
-        find_routes.execute()
-
-        #Set derived outputs from the tool
-        DERIVED_OUTPUT_PARAMETER_START = len(tool_params) - 1
-        arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START, find_routes.solveSucceeded)
-        arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START + 1, find_routes.outputRoutes)
-        arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START + 2, find_routes.outputRouteEdges)
-        arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START + 3, find_routes.outputDirections)
-        arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START + 4, find_routes.outputStops)
-        arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START + 5, find_routes.outputLayer)
-        arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START + 6, find_routes.outputRouteData)
-
+            #Set derived outputs from the tool
+            DERIVED_OUTPUT_PARAMETER_START = len(tool_params) - 1
+            arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START, find_routes.solveSucceeded)
+            arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START + 1, find_routes.outputRoutes)
+            arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START + 2, find_routes.outputRouteEdges)
+            arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START + 3, find_routes.outputDirections)
+            arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START + 4, find_routes.outputStops)
+            arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START + 5, find_routes.outputLayer)
+            arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START + 6, find_routes.outputRouteData)
+        except Exception as ex:
+            self._handleException()
         return
 
 class FindClosestFacilities(nas.NetworkAnalysisTool):
@@ -377,18 +378,20 @@ class FindClosestFacilities(nas.NetworkAnalysisTool):
             "Save_Route_Data" : parameters[30].value,
             "Service_Capabilities": tool_info_file,
         }
+        try:
+            find_closest_facilities = nas.FindClosestFacilities(**tool_params)
+            find_closest_facilities.execute()
 
-        find_closest_facilities = nas.FindClosestFacilities(**tool_params)
-        find_closest_facilities.execute()
-
-        #Set derived outputs from the tool
-        DERIVED_OUTPUT_PARAMETER_START = len(tool_params) - 1
-        arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START, find_closest_facilities.outputRoutes)
-        arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START + 1, find_closest_facilities.outputDirections)
-        arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START + 2, find_closest_facilities.solveSucceeded)
-        arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START + 3, find_closest_facilities.outputFacilities)
-        arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START + 4, find_closest_facilities.outputLayer)
-        arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START + 5, find_closest_facilities.outputRouteData)
+            #Set derived outputs from the tool
+            DERIVED_OUTPUT_PARAMETER_START = len(tool_params) - 1
+            arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START, find_closest_facilities.outputRoutes)
+            arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START + 1, find_closest_facilities.outputDirections)
+            arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START + 2, find_closest_facilities.solveSucceeded)
+            arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START + 3, find_closest_facilities.outputFacilities)
+            arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START + 4, find_closest_facilities.outputLayer)
+            arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START + 5, find_closest_facilities.outputRouteData)
+        except Exception as ex:
+            self._handleException()
 
         return
     
@@ -541,15 +544,17 @@ class GenerateServiceAreas(nas.NetworkAnalysisTool):
             "Service_Areas": parameters[26].valueAsText,
             "Service_Capabilities": tool_info_file,
         }
+        try:
+            generate_service_areas = nas.GenerateServiceAreas(**tool_params)
+            generate_service_areas.execute()
 
-        generate_service_areas = nas.GenerateServiceAreas(**tool_params)
-        generate_service_areas.execute()
-
-        #Set derived outputs from the tool
-        DERIVED_OUTPUT_PARAMETER_START = len(tool_params) - 2
-        arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START, generate_service_areas.outputServiceAreas)
-        arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START + 1, generate_service_areas.solveSucceeded)
-        arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START + 2, generate_service_areas.outputLayer)
+            #Set derived outputs from the tool
+            DERIVED_OUTPUT_PARAMETER_START = len(tool_params) - 2
+            arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START, generate_service_areas.outputServiceAreas)
+            arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START + 1, generate_service_areas.solveSucceeded)
+            arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START + 2, generate_service_areas.outputLayer)
+        except Exception as ex:
+            self._handleException()
 
 class SolveVehicleRoutingProblem(nas.NetworkAnalysisTool):
     '''SolveVehicleRoutingProblem tool in the VehicleRoutingProblem service'''
@@ -794,19 +799,21 @@ class SolveVehicleRoutingProblem(nas.NetworkAnalysisTool):
             "Save_Route_Data" : parameters[34].value,
             "Service_Capabilities": tool_info_file,
         }
+        try:
+            solve_vrp = self.toolExecutionClass(**tool_params)
+            solve_vrp.execute()
 
-        solve_vrp = self.toolExecutionClass(**tool_params)
-        solve_vrp.execute()
-
-        #Set derived outputs from the tool
-        DERIVED_OUTPUT_PARAMETER_START = len(tool_params) - 1
-        arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START, solve_vrp.outputUnassignedStops)
-        arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START + 1, solve_vrp.outputStops)
-        arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START + 2, solve_vrp.outputRoutes)
-        arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START + 3, solve_vrp.outputDirections)
-        arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START + 4, solve_vrp.solveSucceeded)
-        arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START + 5, solve_vrp.outputLayer)
-        arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START + 6, solve_vrp.outputRouteData)
+            #Set derived outputs from the tool
+            DERIVED_OUTPUT_PARAMETER_START = len(tool_params) - 1
+            arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START, solve_vrp.outputUnassignedStops)
+            arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START + 1, solve_vrp.outputStops)
+            arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START + 2, solve_vrp.outputRoutes)
+            arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START + 3, solve_vrp.outputDirections)
+            arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START + 4, solve_vrp.solveSucceeded)
+            arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START + 5, solve_vrp.outputLayer)
+            arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START + 6, solve_vrp.outputRouteData)
+        except Exception as ex:
+            self._handleException()
         return
 
 class EditVehicleRoutingProblem(SolveVehicleRoutingProblem):
@@ -1007,17 +1014,20 @@ class SolveLocationAllocation(nas.NetworkAnalysisTool):
             "Overrides": parameters[28].valueAsText,
             "Service_Capabilities": tool_info_file,
         }
+        
+        try:
+            solve_location_allocation = nas.SolveLocationAllocation(**tool_params)
+            solve_location_allocation.execute()
 
-        solve_location_allocation = nas.SolveLocationAllocation(**tool_params)
-        solve_location_allocation.execute()
-
-        #Set derived outputs from the tool
-        DERIVED_OUTPUT_PARAMETER_START = len(tool_params) - 1
-        arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START, solve_location_allocation.solveSucceeded)
-        arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START + 1, solve_location_allocation.outputAllocationLines)
-        arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START + 2, solve_location_allocation.outputFacilities)
-        arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START + 3, solve_location_allocation.outputDemandPoints)
-        arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START + 4, solve_location_allocation.outputLayer)
+            #Set derived outputs from the tool
+            DERIVED_OUTPUT_PARAMETER_START = len(tool_params) - 1
+            arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START, solve_location_allocation.solveSucceeded)
+            arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START + 1, solve_location_allocation.outputAllocationLines)
+            arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START + 2, solve_location_allocation.outputFacilities)
+            arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START + 3, solve_location_allocation.outputDemandPoints)
+            arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START + 4, solve_location_allocation.outputLayer)
+        except Exception as ex:
+            self._handleException()
 
         return
 
@@ -1154,17 +1164,20 @@ class GenerateOriginDestinationCostMatrix(nas.NetworkAnalysisTool):
             "Service_Capabilities": tool_info_file,
         }
 
-        generate_od_cost_matrix = nas.GenerateOriginDestinationCostMatrix(**tool_params)
-        generate_od_cost_matrix.execute()
+        try:
+            generate_od_cost_matrix = nas.GenerateOriginDestinationCostMatrix(**tool_params)
+            generate_od_cost_matrix.execute()
 
 
-        #Set derived outputs from the tool
-        DERIVED_OUTPUT_PARAMETER_START = len(tool_params) - 1
-        arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START, generate_od_cost_matrix.solveSucceeded)
-        arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START + 1, generate_od_cost_matrix.outputODLines)
-        arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START + 2, generate_od_cost_matrix.outputOrigins)
-        arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START + 3, generate_od_cost_matrix.outputDestinations)
-        arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START + 4, generate_od_cost_matrix.outputLayer)
+            #Set derived outputs from the tool
+            DERIVED_OUTPUT_PARAMETER_START = len(tool_params) - 1
+            arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START, generate_od_cost_matrix.solveSucceeded)
+            arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START + 1, generate_od_cost_matrix.outputODLines)
+            arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START + 2, generate_od_cost_matrix.outputOrigins)
+            arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START + 3, generate_od_cost_matrix.outputDestinations)
+            arcpy.SetParameterAsText(DERIVED_OUTPUT_PARAMETER_START + 4, generate_od_cost_matrix.outputLayer)
+        except Exception as ex:
+            self._handleException()
 
 class GetTravelModes(object):
     '''GetTravelModes tool in Utilities service.'''
@@ -1237,12 +1250,15 @@ class GetTravelModes(object):
             "supportingFiles": parameters[0].values,
         }
 
-        get_travel_modes = nas.GetTravelModes(**tool_params)
-        get_travel_modes.execute()
+        try:
+            get_travel_modes = nas.GetTravelModes(**tool_params)
+            get_travel_modes.execute()
 
-        #Set derived outputs
-        arcpy.SetParameterAsText(1, get_travel_modes.outputTable)
-        arcpy.SetParameterAsText(2, get_travel_modes.defaultTravelMode)
+            #Set derived outputs
+            arcpy.SetParameterAsText(1, get_travel_modes.outputTable)
+            arcpy.SetParameterAsText(2, get_travel_modes.defaultTravelMode)
+        except Exception as ex:
+            arcpy.AddError("A geoprocessing error occurred")
 
 class GetToolInfo(object):
     '''GetToolInfo tool in the Utilities service'''
@@ -1307,12 +1323,12 @@ class GetToolInfo(object):
             "toolName": parameters[2].valueAsText,
         }
 
-        get_tool_info = nas.GetToolInfo(**tool_params)
-
         try:
+            get_tool_info = nas.GetToolInfo(**tool_params)
             get_tool_info.execute()
+            #Set derived outputs
+            arcpy.SetParameterAsText(3, get_tool_info.toolInfo)
         except Exception as ex:
             arcpy.AddError("A geoprocessing error occurred")
 
-        #Set derived outputs
-        arcpy.SetParameterAsText(3, get_tool_info.toolInfo)
+        

@@ -1,5 +1,5 @@
-﻿########################################################################################
-## Copyright 2016 Esri
+########################################################################################
+## Copyright 2017 Esri
 ## Licensed under the Apache License, Version 2.0 (the "License");
 ## you may not use this file except in compliance with the License.
 ## You may obtain a copy of the License at
@@ -12,6 +12,7 @@
 ########################################################################################
 
 import os
+import json
 import arcpy
 import ut
 
@@ -22,7 +23,7 @@ class Toolbox(object):
         
         self.label = "Utility Tools"
         self.alias = "naut"
-        self.tools = [CreateSupportingFiles, PublishRoutingServices]
+        self.tools = [CreateSupportingFiles, PublishRoutingServices, AnalyzeNetworkDataset]
 
 class CreateSupportingFiles(object):
     
@@ -144,6 +145,7 @@ class CreateSupportingFiles(object):
         arcpy.SetParameterAsText(derived_output_start_index + 1, create_supporting_files.travelModesFile)
         arcpy.SetParameterAsText(derived_output_start_index + 2, create_supporting_files.localizedTravelModesFile)
         arcpy.SetParameterAsText(derived_output_start_index + 3, create_supporting_files.toolInfoFile)
+
 
 class PublishRoutingServices(object):
     '''ArcGIS geoprocessing tool that publishes routing services to ArcGIS Server.'''
@@ -296,9 +298,72 @@ class PublishRoutingServices(object):
                                  publish_routing_services.networkAnalysisSyncGeoprocessingService)
 
 
+class AnalyzeNetworkDataset(object):
+    """ArcGIS geoprocessing tool that analyzes network dataset to check if it can be used to publish routing services.
+    """
+
+    def __init__(self):
+        '''Define the tool (tool name is the name of the class).'''
+    
+        self.label = "Analyze Network Dataset"
+        self.description = "Analyzes network dataset to check if it can be used to publish routing services."
+        self.canRunInBackground = False
+        self.category = ""
+    
+    def getParameterInfo(self):
+        '''Define parameter definitions'''
+
+        #Network Dataset parameter
+        network_dataset_param = arcpy.Parameter("network_dataset", "Network Dataset", "Input", "GPNetworkDatasetLayer",
+                                                "Required", multiValue=False)
         
+        # Analyze Succeeded derived output parameter
+        analyze_succeeded_param = arcpy.Parameter("analyze_succeeded", "Analyze Succeeded", "Output", "GPBoolean",
+                                                  "Derived")
+        # Analyzer Messages derived output parameter
+        analyzer_messages_param = arcpy.Parameter("analyzer_messages", "Analyzer Messages", "Output", "GPString",
+                                                  "Derived")
+
+        params = [network_dataset_param, analyze_succeeded_param, analyzer_messages_param]
+        return params
         
-            
+    def isLicensed(self):
+        '''Set whether tool is licensed to execute.'''
+        return True
     
-    
-    
+    def updateParameters(self, parameters):
+        '''Modify the values and properties of parameters before internal
+        validation is performed.  This method is called whenever a parameter
+        has been changed.'''
+        return
+
+    def updateMessages(self, parameters):
+        '''Modify the messages created by internal validation for each tool
+        parameter.  This method is called after internal validation.'''
+        return
+
+    def execute(self, parameters, messages):
+        '''The source code of the tool.'''
+
+        network_dataset = parameters[0].value
+        analyze_network = ut.AnalyzeNetworkDataset(network_dataset)
+        analyze_network.execute()
+
+        # Set the derived outputs
+        success = analyze_network.analyzeSucceedeed
+        analyzer_messages = analyze_network.analyzeMessages
+        arcpy.SetParameter(1, success)
+        arcpy.SetParameterAsText(2, json.dumps(analyzer_messages))
+
+        # Print analyzer messages
+        if success:
+            if analyzer_messages["warnings"]:
+                arcpy.AddMessage("The network dataset was successfully analyzed with the following warnings:")
+            else:
+                arcpy.AddMessage("The network dataset was successfully analyzed.")
+        else:
+            arcpy.AddMessage("The network dataset was not analyzed successfully due to following errors and warnings:")
+        for msg in analyzer_messages["warnings"]:
+            arcpy.AddWarning(msg)
+        for msg in analyzer_messages["errors"]:
+            arcpy.AddError(msg)

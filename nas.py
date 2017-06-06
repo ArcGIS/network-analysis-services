@@ -1,5 +1,5 @@
 ﻿########################################################################################
-## Copyright 2016 Esri
+## Copyright 2017 Esri
 ## Licensed under the Apache License, Version 2.0 (the "License");
 ## you may not use this file except in compliance with the License.
 ## You may obtain a copy of the License at
@@ -601,8 +601,13 @@ class NetworkAnalysisTool(object):
         tolerance_units = travel_mode_settings.get("simplificationToleranceUnits").lstrip("esri")
         tolerance_units = esri_units.get(tolerance_units, tolerance_units)
         if self.simplificationToleranceParam:
-            self.simplificationToleranceParam.value = u"{0} {1}".format(travel_mode_settings.get("simplificationTolerance"),
-                                                                        tolerance_units)
+            # if simplification tolerance is not set in the travel mode, set the simplification tolerance parameter
+            #  value to None
+            tolerance_value = travel_mode_settings.get("simplificationTolerance", None)
+            if tolerance_value:
+                self.simplificationToleranceParam.value = u"{0} {1}".format(tolerance_value, tolerance_units)
+            else:
+                self.simplificationToleranceParam.value = None
         self.restrictionsParam.value = travel_mode_settings.get("restrictionAttributeNames")
         attribute_parameters = travel_mode_settings.get("attributeParameterValues")
         if attribute_parameters:
@@ -849,6 +854,18 @@ class NetworkAnalysisTool(object):
 
         return {param.name : param for param in parameters}
 
+    def _handleException(self):
+        '''handler for generic Exception'''
+        #Handle python errors
+        if LOG_LEVEL == logging.DEBUG:
+            #Get a nicely formatted traceback object except the first line.
+            msgs = traceback.format_exception(*sys.exc_info())[1:]
+            msgs[0] = "A python error occurred in " + msgs[0].lstrip()
+            for msg in msgs:
+                arcpy.AddError(msg.strip())
+        else:
+            arcpy.AddError("A python error occurred.")
+
 class NetworkAnalysisService(object):
     '''Base class for network analysis service which performs the core execution'''
 
@@ -1043,8 +1060,15 @@ class NetworkAnalysisService(object):
 
         #For solve VRP return the values as required by a value table parameter
         if tool_name in ("SolveVehicleRoutingProblem", "EditVehicleRoutingProblem"):
-            return [[self.VRP_SERVICE_CAPABILITIES_KEYWORDS[limit_name], infinity if value is None else value]
-                    for limit_name, value in service_limits.iteritems()]
+            vrp_tool_limits = []
+            for limit_name, value in service_limits.iteritems():
+                if not value:
+                    value = 0 if limit_name == "forceHierarchyBeyondDistance" else infinity
+                vrp_tool_limits.append([self.VRP_SERVICE_CAPABILITIES_KEYWORDS[limit_name], value])
+            return vrp_tool_limits
+
+            #return [[self.VRP_SERVICE_CAPABILITIES_KEYWORDS[limit_name], infinity if value is None else value]
+                    #for limit_name, value in service_limits.iteritems()]
         else:
             return {self.SERVICE_CAPABILITIES_KEYWORDS[limit_name] : service_limits[limit_name]
                     for limit_name in service_limits}
@@ -1599,8 +1623,11 @@ class FindRoutes(NetworkAnalysisService):
         self.timeZoneForTimeWindows = kwargs.get("Time_Zone_for_Time_Windows", None)
         self.routeShape = kwargs.get("Route_Shape", None)
         self.routeLineSimplicationTolerance = kwargs.get("Route_Line_Simplification_Tolerance", None)
-        #Set simplification tolerance to None if value is 0
-        if str_to_float(self.routeLineSimplicationTolerance.split(" ")[0]) == 0:
+        #Set simplification tolerance to None if value is 0 or not specified
+        if self.routeLineSimplicationTolerance:
+            if str_to_float(self.routeLineSimplicationTolerance.split(" ")[0]) == 0:
+                self.routeLineSimplicationTolerance = None
+        else:
             self.routeLineSimplicationTolerance = None
         self.populateRouteEdges = kwargs.get("Populate_Route_Edges", None)
         self.populateDirections = kwargs.get("Populate_Directions", None)
@@ -1838,8 +1865,11 @@ class FindClosestFacilities(NetworkAnalysisService):
         self.timeOfDayUsage = kwargs.get("Time_of_Day_Usage", None)
         self.routeShape = kwargs.get("Route_Shape", None)
         self.routeLineSimplicationTolerance = kwargs.get("Route_Line_Simplification_Tolerance", None)
-        #Set simplification tolerance to None if value is 0
-        if str_to_float(self.routeLineSimplicationTolerance.split(" ")[0]) == 0:
+        #Set simplification tolerance to None if value is 0 or not specified
+        if self.routeLineSimplicationTolerance:
+            if str_to_float(self.routeLineSimplicationTolerance.split(" ")[0]) == 0:
+                self.routeLineSimplicationTolerance = None
+        else:
             self.routeLineSimplicationTolerance = None
         self.populateDirections = kwargs.get("Populate_Directions", None)
         self.directionsLanguage = kwargs.get("Directions_Language", None)
@@ -2058,8 +2088,11 @@ class GenerateServiceAreas(NetworkAnalysisService):
         self.detailedPolygons = kwargs.get("Detailed_Polygons", None)
         self.trimDistance = kwargs.get("Polygon_Trim_Distance", None)
         self.simplificationTolerance = kwargs.get("Polygon_Simplification_Tolerance", None)
-        #Set simplification tolerance to None if value is 0
-        if str_to_float(self.simplificationTolerance.split(" ")[0]) == 0:
+        #Set simplification tolerance to None if value is 0 or not specified
+        if self.simplificationTolerance:
+            if str_to_float(self.simplificationTolerance.split(" ")[0]) == 0:
+                self.simplificationTolerance = None
+        else:
             self.simplificationTolerance = None
         
         #outputs and derived outputs
@@ -2313,8 +2346,11 @@ class SolveVehicleRoutingProblem(NetworkAnalysisService):
         self.excessTransitFactor = kwargs.get("Excess_Transit_Factor", None)
         self.populateRouteLines = kwargs.get("Populate_Route_Lines", None)
         self.routeLineSimplicationTolerance = kwargs.get("Route_Line_Simplification_Tolerance", None)
-        #Set simplification tolerance to None if value is 0
-        if str_to_float(self.routeLineSimplicationTolerance.split(" ")[0]) == 0:
+        #Set simplification tolerance to None if value is 0 or not specified
+        if self.routeLineSimplicationTolerance:
+            if str_to_float(self.routeLineSimplicationTolerance.split(" ")[0]) == 0:
+                self.routeLineSimplicationTolerance = None
+        else:
             self.routeLineSimplicationTolerance = None
         self.populateDirections = kwargs.get("Populate_Directions", None)
         self.directionsLanguage = kwargs.get("Directions_Language", None)
