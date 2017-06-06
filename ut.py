@@ -1,5 +1,5 @@
 ﻿########################################################################################
-## Copyright 2016 Esri
+## Copyright 2017 Esri
 ## Licensed under the Apache License, Version 2.0 (the "License");
 ## you may not use this file except in compliance with the License.
 ## You may obtain a copy of the License at
@@ -39,7 +39,9 @@ except:
 import arcpy
 import nas
 
-#module level attributes
+# module level attributes
+
+TIME_UNITS = ('Minutes', 'Hours', 'Days', 'Seconds')
 
 class CreateSupportingFiles(object):
     '''class containing the execution logic'''
@@ -306,6 +308,7 @@ class CreateSupportingFiles(object):
         default_distance_attr = ""
         default_impedance_attr = ""
         default_travel_mode_name = ""
+        default_travel_mode = None
         default_restriction_attrs = []
         time_costs = {}
         distance_costs = {}
@@ -320,6 +323,11 @@ class CreateSupportingFiles(object):
         is_sdc_nds = (nds_type == 'SDC')
 
         nds_travel_modes = {k.upper() : v for k,v in arcpy.na.GetTravelModes(nds_desc.catalogPath).iteritems()}
+        # Store travel mode names grouped by type
+        nds_travel_mode_types = {}
+        for k,v in nds_travel_modes.iteritems():
+            travel_mode_type = nds_travel_mode_types.setdefault(v.type, [])
+            travel_mode_type.append(k)
 
         #Build a list of restriction, time and distance cost attributes
         #Get default attributes for geodatabase network datasets.
@@ -336,6 +344,9 @@ class CreateSupportingFiles(object):
         #cost attribute in alphabetical order and last distance based cost attribute.
         first_time_cost_attribute = sorted(time_costs.keys())[0]
         default_travel_mode_name = nds_desc.defaultTravelModeName
+        # If a default travel mode is not defined, use the first travel mode as default
+        if not default_travel_mode_name:
+            default_travel_mode_name = sorted(nds_travel_modes.keys())[0]
         if default_travel_mode_name and default_travel_mode_name.upper() in nds_travel_modes:
             default_travel_mode = nds_travel_modes[default_travel_mode_name.upper()]
             default_time_attr = default_travel_mode.timeAttributeName
@@ -356,13 +367,27 @@ class CreateSupportingFiles(object):
         network_properties["time_attribute"] = default_time_attr
         network_properties["time_attribute_units"] = time_costs[default_time_attr]
         #Set the walk time and truck travel time attribute and their units. If the attributes with name
-        #WalkTime and TruckTravelTime do not exist, use the first cost attribute
-        walk_time_attribute = "WalkTime" if "WalkTime" in time_costs else first_time_cost_attribute
+        #WalkTime and TruckTravelTime do not exist, use the first travel mode of type WALK or TRUCK. Otherwise use the
+        #first time cost attribute.
+        if "WalkTime" in time_costs:
+            walk_time_attribute = "WalkTime"
+        elif nds_travel_mode_types.get("WALK", None):
+            first_walk_type_travel_mode = sorted(nds_travel_mode_types["WALK"])[0]
+            walk_time_attribute = nds_travel_modes[first_walk_type_travel_mode].timeAttributeName
+        else:
+            walk_time_attribute = first_time_cost_attribute
         network_properties["walk_time_attribute"] = walk_time_attribute
         network_properties["walk_time_attribute_units"] = time_costs[walk_time_attribute]
-        truck_time_attribute = "TruckTravelTime" if "TruckTravelTime" in time_costs else first_time_cost_attribute
+        if "TruckTravelTime" in time_costs:
+            truck_time_attribute = "TruckTravelTime"
+        elif nds_travel_mode_types.get("TRUCK", None):
+            first_truck_type_travel_mode = sorted(nds_travel_mode_types["TRUCK"])[0]
+            truck_time_attribute = nds_travel_modes[first_truck_type_travel_mode].timeAttributeName
+        else:
+            truck_time_attribute = first_time_cost_attribute
         network_properties["truck_time_attribute"] = truck_time_attribute
         network_properties["truck_time_attribute_units"] = time_costs[truck_time_attribute]
+
         time_neutral_attribute = "Minutes" if "Minutes" in time_costs else first_time_cost_attribute
         network_properties["time_neutral_attribute"] = time_neutral_attribute
         network_properties["time_neutral_attribute_units"] = time_costs[time_neutral_attribute]
@@ -425,7 +450,7 @@ class CreateSupportingFiles(object):
         #store the travel mode that is used to set the custom travel mode settings parameters
         #default_custom_travel_mode_name = "Driving Time"
         default_custom_travel_mode_name = "DRIVING TIME"
-        default_custom_travel_mode = nds_travel_modes.get(default_custom_travel_mode_name, {})
+        default_custom_travel_mode = nds_travel_modes.get(default_custom_travel_mode_name, default_travel_mode)
         if default_custom_travel_mode:
             default_custom_travel_mode = unicode(default_custom_travel_mode)
         network_properties["default_custom_travel_mode"] = default_custom_travel_mode
@@ -754,6 +779,27 @@ class PublishRoutingServices(object):
             if not user_privilege in ("ADMINISTER"):
                 self.logger.error("User {0} does not have administrator privilege".format(self.userName))
                 raise arcpy.ExecuteError
+
+        # Check if the network dataset can be successfully used for publishing routing services
+        try:
+            analyze_nds = AnalyzeNetworkDataset(self.templateNDSDescribe)
+            analyze_nds.execute()
+        except Exception as ex:
+            self.logger.exception(u"Failed to analyze the network dataset.")
+            raise arcpy.ExecuteError
+        # Write any warnings from network dataset analyzer
+        if analyze_nds.analyzeSucceedeed:
+            analyzer_warnings = analyze_nds.analyzeMessages["warnings"] 
+            if analyzer_warnings:
+                self.logger.info("The following warnings were returned when analyzing the input network dataset:")
+                for msg in analyzer_warnings:
+                    self.logger.warning(msg)    
+        else:
+            # fail since analyzer returned errors
+            self.logger.info("The following errors were returned when analyzing the input network dataset:")
+            for msg in analyze_nds.analyzeMessages["errors"]:
+                self.logger.error(msg)
+            raise arcpy.ExecuteError
         
         #Create a AGS file with server connection info
         ags_connection_file_name = "server.ags"
@@ -1380,5 +1426,148 @@ class PublishRoutingServices(object):
             "token": site_admin_token,
             "f": "json",
         }
-    
+
+class AnalyzeNetworkDataset(object):
+    """Determine if the network dataset can be used for publishing routing services."""
+
+    MISSING_TIME_COST = "The network dataset does not have at least one time based cost attribute."
+    MISSING_DISTANCE_COST = "The network dataset does not have at least one distance based cost attribute."
+    MISSING_DIRECTIONS = "The network dataset does not support generating directions."
+    MISSING_TRAVEL_MODES = "The network dataset does not have at least one travel mode."
+    MISSING_SA_INDEX = "A service area index has not been created on the network dataset."
+    NOT_DISSOLVED = "The network dataset has not been dissolved."
+    INVALID_WKS_TYPE = "The network dataset is not stored in a file geodatabase."
+    MISSING_TRUCK_TIME_COST_ATTRIBUTE = ("The network dataset does not have a travel mode of type Truck or a cost "
+                                         "attribute named TruckTravelTime. The geoprocessing services might return " 
+                                         "unexpected results when the Impedance parameter is set to 'Truck Time'.")
+    MISSING_WALK_TIME_COST_ATTRIBUTE = ("The network dataset does not have a travel mode of type Walk or a cost "
+                                         "attribute named WalkTime. The geoprocessing services might return " 
+                                         "unexpected results when the Impedance parameter is set to 'Walk Time'.")
+
+    def __init__(self, network_dataset):
+        """Initialize names that can be used else where.
         
+        Args:
+            network_dataset - Can be a network dataset layer or a network dataset catalogf path or a network dataset
+                              describe object. If not a describe object, then the network dataset is described which is
+                              slow. So it is recommended to pass a network dataset describe object if available.
+        
+        """
+        # Assume a describe object is passed
+        self.descNDS = network_dataset
+        if hasattr(self.descNDS, "dataType"):
+            self.networkDatasetPath = self.descNDS.catalogPath
+        else:
+            # Check if a network dataset layer is passed
+            if hasattr(network_dataset, "dataSource"):
+                self.networkDatasetPath = network_dataset.dataSource
+            else:
+                if hasattr(network_dataset, "value"):
+                    # A GP value object is passed
+                    self.networkDatasetPath = network_dataset.value
+                else:
+                    # A network dataset catalog path is passed
+                    self.networkDatasetPath = network_dataset
+
+            # Describe the network dataset
+            self.descNDS = arcpy.Describe(network_dataset) 
+        self.ndsFeatureDataset = os.path.dirname(self.networkDatasetPath)
+
+        # Define derived outputs
+        self.analyzeSucceedeed = False
+        # Define dictionary that stores output from validation
+        self.analyzeMessages = {
+            "errors": [],
+            "warnings": [],
+        }
+        
+    def execute(self):
+        """Core execution logic"""
+
+        ## Perform critical checks whose violation should result in a failure.
+
+        # Check if the network dataset is stored in a file geodatabase
+        network_type = self.descNDS.networkType
+        if network_type == "Geodatabase":
+            # Since a geodatabase network dataset is always in a feature dataset, the workspace for the network dataset
+            # can be obtained from its catalog path
+            nds_workspace = os.path.dirname(self.ndsFeatureDataset)
+            nds_workspace_type = arcpy.Describe(nds_workspace).workspaceFactoryProgID
+            if not nds_workspace_type.startswith("esriDataSourcesGDB.FileGDBWorkspaceFactory"):
+                self.analyzeMessages["errors"].append(self.INVALID_WKS_TYPE)    
+        else:
+            self.analyzeMessages["errors"].append(self.INVALID_WKS_TYPE)
+
+
+        # Check if the network dataset has at least one cost and one distance attribute 
+        nds_attrs = self.descNDS.attributes
+        time_costs = []
+        distance_costs = []
+        for attr in nds_attrs:
+            if attr.usageType.lower() == "cost":
+                attr_units = attr.units
+                if attr_units in TIME_UNITS:
+                    time_costs.append(attr.name)
+                elif attr_units.lower() == "unknown":
+                    continue
+                else:
+                    distance_costs.append(attr.name)
+        if not time_costs:
+            self.analyzeMessages["errors"].append(self.MISSING_TIME_COST)
+        if not distance_costs:
+            self.analyzeMessages["errors"].append(self.MISSING_DISTANCE_COST)
+        
+        # Check if the network dataset supports directions
+        if not self.descNDS.supportsDirections:
+            self.analyzeMessages["errors"].append(self.MISSING_DIRECTIONS)
+
+        # Check if the network dataset has at least one travel mode
+        nds_travel_modes = arcpy.na.GetTravelModes(self.networkDatasetPath)
+        if not nds_travel_modes:
+            self.analyzeMessages["errors"].append(self.MISSING_TRAVEL_MODES)
+
+        ## Perform recommended checks that result in warnings but not in errors
+
+        # Check if the Service Area index has been created.
+        nds_optimizations = self.descNDS.optimizations
+        if "Service Area Index" not in nds_optimizations:
+            self.analyzeMessages["warnings"].append(self.MISSING_SA_INDEX)
+        
+        # Check if the network dataset is dissolved.
+        # for this check if there is a feature class called <edge source name>_Override for every edge source.
+        # The overrides feature class should be in the same feature dataset as the edge source
+        is_dissolved = False
+        nds_edge_source_names = [edge_source.name for edge_source in self.descNDS.edgeSources]
+        # Do the dissolve check only for network dataset with single edge source since only single edge source network
+        # dataset can be dissolved.
+        if len(nds_edge_source_names) == 1:
+            override_fc = os.path.join(self.ndsFeatureDataset, u"{}_Override".format(nds_edge_source_names[0]))
+            if arcpy.Exists(override_fc):
+                is_dissolved = True
+        else:
+            is_dissolved = True
+        if not is_dissolved:
+             self.analyzeMessages["warnings"].append(self.NOT_DISSOLVED)
+
+        # Check if the network dataset has truck time and walk time cost attributes
+        nds_travel_mode_types = {}
+        for k,v in nds_travel_modes.iteritems():
+            travel_mode_type = nds_travel_mode_types.setdefault(v.type, [])
+            travel_mode_type.append(k)
+        if "WalkTime" in time_costs:
+            pass
+        elif nds_travel_mode_types.get("WALK", None):
+            pass
+        else:
+            self.analyzeMessages["warnings"].append(self.MISSING_WALK_TIME_COST_ATTRIBUTE)
+        if "TruckTravelTime" in time_costs:
+            pass
+        elif nds_travel_mode_types.get("TRUCK", None):
+            pass
+        else:
+            self.analyzeMessages["warnings"].append(self.MISSING_TRUCK_TIME_COST_ATTRIBUTE)
+        
+        # If we do not have any errors, set the analyze output as True.
+        if not self.analyzeMessages["errors"]:
+            self.analyzeSucceedeed = True
+    
