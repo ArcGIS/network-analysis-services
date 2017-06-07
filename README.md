@@ -7,7 +7,7 @@ Follow the instructions from the [wiki](../../wiki) to publish the services.
 ## Requirements
 * ArcGIS for Server 10.4 or later
 * ArcGIS for Desktop 10.4 or later
-* Esri StreetMap Premium data 2015 Release 1 or later
+* A network dataset from Esri StreetMap Premium 2015 Release 1 or later or your own network dataset
 
 ## Resources
 * [ArcGIS for Server documentation](http://server.arcgis.com/en/documentation/)
